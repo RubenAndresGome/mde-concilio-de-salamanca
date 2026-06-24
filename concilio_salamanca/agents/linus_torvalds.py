@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, Optional
 
-from langchain_openai import ChatOpenAI
+from langchain_core.language_models import BaseChatModel
 
 from concilio_salamanca.agents.base import AgenteBase
 from concilio_salamanca.prompts.system_prompts import LINUS_TORVALDS
@@ -13,7 +13,7 @@ class LinusTorvalds(AgenteBase):
     role_name = "Linus Torvalds (Pragmaticus Maximus)"
     system_prompt = LINUS_TORVALDS
 
-    def __init__(self, model: ChatOpenAI):
+    def __init__(self, model: BaseChatModel):
         super().__init__(model)
 
     def act(self, code: str, context: Optional[Dict[str, str]] = None) -> AgentOutput:

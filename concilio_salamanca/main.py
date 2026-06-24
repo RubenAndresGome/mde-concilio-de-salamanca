@@ -24,7 +24,7 @@ from typing import List, Optional
 
 import yaml
 
-from langchain_openai import ChatOpenAI
+from langchain_core.language_models import BaseChatModel
 
 
 def load_config(config_path: Optional[str] = None) -> dict:
@@ -239,6 +239,19 @@ def main():
         "--model", "-m", type=str, default=None, help="Modelo LLM a usar"
     )
     parser.add_argument(
+        "--provider", type=str, default=None,
+        choices=["openai", "deepseek", "anthropic", "groq", "ollama", "opencode"],
+        help="Proveedor LLM (openai, deepseek, anthropic, groq, ollama, opencode)",
+    )
+    parser.add_argument(
+        "--base-url", type=str, default=None,
+        help="URL base del endpoint (para proxies o self-hosted)",
+    )
+    parser.add_argument(
+        "--list-providers", action="store_true",
+        help="Listar proveedores LLM soportados y salir",
+    )
+    parser.add_argument(
         "--rounds", "-r", type=int, default=None, help="Rondas de debate"
     )
     parser.add_argument(
@@ -258,6 +271,10 @@ def main():
         "--mode", type=str, default="escolastico",
         choices=["escolastico", "ejecutivo"],
         help="Modo de salida: escolastico (completo) o ejecutivo (informe tecnico reducido)",
+    )
+    parser.add_argument(
+        "--verbose", "-v", action="store_true",
+        help="Mostrar reporte trinivel de silogismos (escolastico, conjuntos, predicados)",
     )
     parser.add_argument(
         "--interactive", "-i",
@@ -336,7 +353,19 @@ def main():
     )
     bme_parser.add_argument(
         "--income-country", type=str, default=None,
-        help="Pais de origen del ingreso (si es distinto al de residencia, activa geo-arbitraje)"
+        help="Pais de origen del ingreso (si es distinto al de residencia, activa geo-arbitraje)",
+    )
+
+    audit_parser = subparsers.add_parser(
+        "audit", help="Escanear codigo en busca de anti-patrones conocidos (sin LLM)"
+    )
+    audit_parser.add_argument(
+        "--file", "-f", type=str, required=True, help="Archivo a escanear"
+    )
+    audit_parser.add_argument(
+        "--domain", type=str, default=None,
+        choices=["frontend", "backend", "seguridad", "rendimiento", "datos", "fullstack"],
+        help="Filtrar por dominio",
     )
 
     args = parser.parse_args()
@@ -344,6 +373,11 @@ def main():
     if args.list_agents:
         from concilio_salamanca.agents import list_agents
         print(list_agents())
+        return
+
+    if args.list_providers:
+        from concilio_salamanca.debate.providers import list_providers
+        print(list_providers())
         return
 
     if args.list_anti_patrones:
@@ -400,11 +434,54 @@ def main():
         print(f"Categoria:         {result['categoria']}")
         return
 
+    if args.command == "audit":
+        from concilio_salamanca.reference.anti_patrones import ANTI_PATRONES, listar_anti_patrones
+
+        filepath = Path(args.file)
+        if not filepath.exists():
+            print(f"Error: Archivo no encontrado: {args.file}")
+            sys.exit(1)
+
+        code = filepath.read_text(encoding="utf-8")
+        code_lower = code.lower()
+
+        if args.domain:
+            candidates = listar_anti_patrones(dominio=args.domain)
+        else:
+            candidates = ANTI_PATRONES
+
+        matches = []
+        for ap in candidates:
+            for sintoma in ap.sintomas:
+                keywords = sintoma.lower().split()
+                significant = [w for w in keywords if len(w) > 3 and w not in ("como", "para", "del", "los", "las", "que", "con", "por", "una", "sus", "the", "and", "for", "with")]
+                if any(kw in code_lower for kw in significant):
+                    matches.append(ap)
+                    break
+
+        if not matches:
+            print(f"No se detectaron anti-patrones en {args.file}")
+            return
+
+        print(f"Auditoria rapida de anti-patrones: {args.file}")
+        print(f"Se detectaron {len(matches)} posibles anti-patrones:\n")
+
+        for ap in matches:
+            severity_icon = {"critica": "[CRIT]", "alta": "[ALTA]", "media": "[MED]", "baja": "[BAJA]"}.get(ap.severidad.value, "")
+            print(f"  {severity_icon} {ap.id}: {ap.nombre}")
+            print(f"     Dominio: {ap.dominio.value}")
+            print(f"     Conclusion: {ap.conclusion[:120]}...")
+            print(f"     Correccion: {ap.correccion}")
+            print()
+        return
+
     cfg = load_config(args.config)
     concilio_cfg = cfg.get("concilio", {})
     debate_cfg = cfg.get("debate", {})
 
     model_name = args.model or concilio_cfg.get("model", "gpt-4o")
+    provider = args.provider or concilio_cfg.get("provider", "openai")
+    base_url = args.base_url or concilio_cfg.get("base_url") or None
     temperature = concilio_cfg.get("temperature", 0)
     max_rounds = args.rounds or debate_cfg.get("max_rounds", 2)
     enable_pnc = not args.no_pnc and debate_cfg.get("enable_pnc", True)
@@ -418,9 +495,13 @@ def main():
     else:
         agent_selection = ["promotor", "defensor", "doctor", "larouche", "leon_xiii"]
 
-    api_key = args.api_key or concilio_cfg.get("api_key") or os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        print("Error: Se requiere OPENAI_API_KEY (variable de entorno, --api-key o config.yaml)")
+    from concilio_salamanca.debate.providers import create_model, resolve_api_key
+
+    api_key = resolve_api_key(provider, args.api_key)
+    if not api_key and provider not in ("ollama",):
+        env_key = {"openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY",
+                    "anthropic": "ANTHROPIC_API_KEY", "groq": "GROQ_API_KEY"}.get(provider, "API_KEY")
+        print(f"Error: Se requiere {env_key} (variable de entorno, --api-key o config.yaml)")
         sys.exit(1)
 
     if args.code:
@@ -449,6 +530,7 @@ def main():
     agent_labels = [get_agent_label(k) for k in resolved]
 
     print(f"Concilio de Salamanca convocado.")
+    print(f"  Proveedor:  {provider}")
     print(f"  Modelo:     {model_name}")
     print(f"  Modo:       {args.mode}")
     print(f"  Rondas:     {max_rounds}")
@@ -460,7 +542,13 @@ def main():
         print(f"    - {lbl}")
     print()
 
-    model = ChatOpenAI(model=model_name, temperature=temperature, api_key=api_key)
+    model = create_model(
+        provider=provider,
+        model=model_name,
+        api_key=api_key,
+        base_url=base_url,
+        temperature=temperature,
+    )
 
     from concilio_salamanca.debate.orchestrator import DebateConfig, DebateOrchestrator
 
@@ -488,6 +576,17 @@ def main():
         }
         output = formatters[args.output](result)
     print(output)
+
+    if args.verbose:
+        print("\n" + "=" * 70)
+        print("REPORTE TRINIVEL DE SILOGISMOS")
+        print("=" * 70)
+        from concilio_salamanca.debate.syllogism_cache import SyllogismReducer, get_syllogism_cache
+        cache = get_syllogism_cache()
+        for key, unified in cache.unified_store.items():
+            report = SyllogismReducer.format_full_report(unified)
+            print(report)
+            print()
 
     if args.save:
         Path(args.save).write_text(output, encoding="utf-8")

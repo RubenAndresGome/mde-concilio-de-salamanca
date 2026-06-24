@@ -9,6 +9,7 @@ from concilio_salamanca.prompts.system_prompts import (
     DOCTOR_MATERIA,
     GENNADY_KOROTKEVICH,
     INGENIERO_MLOPS,
+    INGENIERO_IOT,
     KEN_THOMPSON,
     LINUS_TORVALDS,
     MAGISTER_DETERMINANS,
@@ -36,4 +37,5 @@ __all__ = [
     "INGENIERO_MLOPS",
     "SANITARIO_DATOS",
     "ARQUITECTO_SISTEMAS",
+    "INGENIERO_IOT",
 ]

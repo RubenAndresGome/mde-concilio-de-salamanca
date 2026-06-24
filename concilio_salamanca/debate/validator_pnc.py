@@ -4,7 +4,7 @@ import json
 from typing import Dict, List
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+from langchain_core.language_models import BaseChatModel
 from pydantic import BaseModel
 
 from concilio_salamanca.schemas import (
@@ -41,7 +41,7 @@ FORMATO DE SALIDA OBLIGATORIO (JSON):
 
 
 class ValidadorPNC:
-    def __init__(self, model: ChatOpenAI):
+    def __init__(self, model: BaseChatModel):
         self.model = model
 
     def validate(self, agent_outputs: Dict[str, AgentOutput]) -> PnCValidation:

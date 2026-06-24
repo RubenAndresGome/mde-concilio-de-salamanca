@@ -16,6 +16,7 @@ from concilio_salamanca.agents.analista_seguridad import AnalistaSeguridad
 from concilio_salamanca.agents.ingeniero_mlops import IngenieroMLOps
 from concilio_salamanca.agents.sanitario_datos import SanitarioDatos
 from concilio_salamanca.agents.arquitecto_sistemas import ArquitectoSistemas
+from concilio_salamanca.agents.ingeniero_iot import IngenieroIoT
 
 AGENT_REGISTRY = {
     "promotor": ("Promotor Fidei", PromotorFidei),
@@ -34,6 +35,7 @@ AGENT_REGISTRY = {
     "mlops": ("Architectus Pipeline (MLOps)", IngenieroMLOps),
     "datos": ("Purgator Datorum (Data Sanitation)", SanitarioDatos),
     "sistemas": ("Architectus Systematis (Systems)", ArquitectoSistemas),
+    "iot": ("Architectus Siliconis (IoT Embedded)", IngenieroIoT),
 }
 
 AGENT_GROUPS = {
@@ -42,9 +44,10 @@ AGENT_GROUPS = {
     "pragmaticos": ["linus", "wozniak", "thompson"],
     "eticos": ["stallman", "stroustrup"],
     "algoritmicos": ["korotkevich"],
-    "tecnicos": ["auditor_dl", "seguridad", "mlops", "datos", "sistemas"],
+    "tecnicos": ["auditor_dl", "seguridad", "mlops", "datos", "sistemas", "iot"],
     "acusacion": ["promotor", "larouche", "linus", "korotkevich", "seguridad"],
     "defensa": ["defensor", "doctor", "leon_xiii", "wozniak", "stallman", "stroustrup", "thompson"],
+    "embebidos": ["iot", "wozniak", "thompson", "sistemas"],
     "seguridad_completa": ["promotor", "defensor", "doctor", "seguridad", "mlops", "datos"],
     "ia_produccion": ["auditor_dl", "mlops", "datos", "sistemas", "seguridad", "promotor"],
 }
@@ -98,6 +101,7 @@ __all__ = [
     "IngenieroMLOps",
     "SanitarioDatos",
     "ArquitectoSistemas",
+    "IngenieroIoT",
     "AGENT_REGISTRY",
     "AGENT_GROUPS",
     "get_agent_keys",

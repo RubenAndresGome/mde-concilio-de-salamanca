@@ -1,8 +1,12 @@
 # Configuración del Concilio de Salamanca (MDE)
 concilio:
-  # Modelo LLM principal (langchain model string)
+  # Proveedor LLM: openai, deepseek, anthropic, groq, ollama, opencode
+  provider: "openai"
+  # Modelo LLM principal
   model: "gpt-4o"
-  # Temperatura para razonamiento silogístico (0 = determinista)
+  # URL base opcional (para proxies, self-hosted o DeepSeek)
+  base_url: ""
+  # Temperatura para razonamiento silogistico (0 = determinista)
   temperature: 0
   # API key (usa variable de entorno OPENAI_API_KEY si no se especifica)
   # api_key: "sk-..."

@@ -5,7 +5,7 @@ import time
 from typing import Dict, List, Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+from langchain_core.language_models import BaseChatModel
 
 from concilio_salamanca.prompts.system_prompts import MAGISTER_DETERMINANS
 from concilio_salamanca.schemas import (
@@ -21,7 +21,7 @@ class MagisterDeterminans:
     role_name = "Magister Determinans"
     system_prompt = MAGISTER_DETERMINANS
 
-    def __init__(self, model: ChatOpenAI):
+    def __init__(self, model: BaseChatModel):
         self.model = model
 
     def judge(

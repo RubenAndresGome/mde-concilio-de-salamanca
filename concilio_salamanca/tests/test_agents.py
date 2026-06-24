@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock
 
+import pytest
+
 from concilio_salamanca.agents import (
     AGENT_GROUPS,
     AGENT_REGISTRY,
@@ -23,6 +25,7 @@ from concilio_salamanca.agents.analista_seguridad import AnalistaSeguridad
 from concilio_salamanca.agents.ingeniero_mlops import IngenieroMLOps
 from concilio_salamanca.agents.sanitario_datos import SanitarioDatos
 from concilio_salamanca.agents.arquitecto_sistemas import ArquitectoSistemas
+from concilio_salamanca.agents.ingeniero_iot import IngenieroIoT
 from concilio_salamanca.agents.ken_thompson import KenThompson
 from concilio_salamanca.agents.linus_torvalds import LinusTorvalds
 from concilio_salamanca.agents.magister_determinans import MagisterDeterminans
@@ -199,6 +202,10 @@ def test_arquitecto_sistemas():
     _test_agent(ArquitectoSistemas)
 
 
+def test_ingeniero_iot():
+    _test_agent(IngenieroIoT)
+
+
 def test_magister_parse():
     model = _mock_model()
     magister = MagisterDeterminans(model)
@@ -235,7 +242,7 @@ def test_pnc_validator_parse():
 
 # --- Agent registry tests ---
 def test_agent_registry_has_all_agents():
-    assert len(AGENT_REGISTRY) == 16
+    assert len(AGENT_REGISTRY) == 17
     expected_keys = [
         "promotor", "defensor", "doctor", "larouche", "leon_xiii",
         "linus", "wozniak", "stallman", "stroustrup", "thompson", "korotkevich",
@@ -268,7 +275,7 @@ def test_resolve_agents_mixed():
 
 def test_resolve_agents_todos():
     result = resolve_agents(["todos"])
-    assert len(result) == 16
+    assert len(result) == 17
 
 
 def test_resolve_agents_no_duplicates():
@@ -299,6 +306,7 @@ def test_agent_groups_exist():
     assert "defensa" in AGENT_GROUPS
     assert "seguridad_completa" in AGENT_GROUPS
     assert "ia_produccion" in AGENT_GROUPS
+    assert "embebidos" in AGENT_GROUPS
 
 
 # --- Orchestrator with custom agents ---
@@ -600,3 +608,30 @@ def test_determinatio_template():
     )
     assert "DETERMINATIO MAGISTRAL" in escolastico
     assert "Sic determinat Magister" in escolastico
+
+
+def test_providers():
+    from concilio_salamanca.debate.providers import (
+        PROVIDERS, get_provider_info, list_providers, resolve_api_key,
+    )
+
+    assert "openai" in PROVIDERS
+    assert "deepseek" in PROVIDERS
+    assert "anthropic" in PROVIDERS
+    assert "groq" in PROVIDERS
+    assert "ollama" in PROVIDERS
+    assert "opencode" in PROVIDERS
+
+    assert PROVIDERS["deepseek"]["base_url"] == "https://api.deepseek.com"
+    assert PROVIDERS["openai"]["env_key"] == "OPENAI_API_KEY"
+    assert PROVIDERS["deepseek"]["env_key"] == "DEEPSEEK_API_KEY"
+
+    info = get_provider_info("deepseek")
+    assert info["default_model"] == "deepseek-chat"
+
+    with pytest.raises(ValueError):
+        get_provider_info("nonexistent")
+
+    output = list_providers()
+    assert "openai" in output
+    assert "deepseek" in output

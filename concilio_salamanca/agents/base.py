@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+from langchain_core.language_models import BaseChatModel
 
 from concilio_salamanca.schemas import AgentOutput, AgentVeredict, Silogismo, Veredicto
 
@@ -27,11 +27,12 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
   }}}},
   "principio_no_contradiccion": true,
   "veredicto": "CONDENA|ABSUELVE|RESERVA",
-  "fundamento": "Razon del veredicto..."
+  "fundamento": "Razon del veredicto...",
+  "anti_patron_id": "AP-XXX o null (si detectas un anti-patron del catalogo del Concilio, referencia su ID)"
 }}}}
 """
 
-    def __init__(self, model: ChatOpenAI):
+    def __init__(self, model: BaseChatModel):
         self.model = model
 
     def _build_messages(

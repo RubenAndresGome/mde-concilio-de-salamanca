@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from langchain_openai import ChatOpenAI
+from langchain_core.language_models import BaseChatModel
 
 from concilio_salamanca.agents import (
     AGENT_REGISTRY,
@@ -31,7 +31,7 @@ class DebateConfig:
 class DebateOrchestrator:
     def __init__(
         self,
-        model: ChatOpenAI,
+        model: BaseChatModel,
         config: Optional[DebateConfig] = None,
     ):
         self.model = model

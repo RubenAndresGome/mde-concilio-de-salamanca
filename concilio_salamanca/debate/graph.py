@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from langgraph.graph import END, StateGraph, START
 
-from langchain_openai import ChatOpenAI
+from langchain_core.language_models import BaseChatModel
 
 from concilio_salamanca.agents import (
     AGENT_REGISTRY,
@@ -24,7 +24,7 @@ from concilio_salamanca.schemas import (
 class SalamancaGraphBuilder:
     def __init__(
         self,
-        model: ChatOpenAI,
+        model: BaseChatModel,
         max_rounds: int = 2,
         enable_pnc: bool = True,
         agents: Optional[List[str]] = None,
@@ -136,7 +136,7 @@ class SalamancaGraphBuilder:
 
 
 def create_salamanca_graph(
-    model: ChatOpenAI,
+    model: BaseChatModel,
     max_rounds: int = 2,
     enable_pnc: bool = True,
     agents: Optional[List[str]] = None,
@@ -150,5 +150,5 @@ def create_salamanca_graph(
     return builder.build()
 
 
-def create_salamanca_graph_legacy(model):
+def create_salamanca_graph_legacy(model: BaseChatModel):
     return create_salamanca_graph(model, max_rounds=1, enable_pnc=False)
