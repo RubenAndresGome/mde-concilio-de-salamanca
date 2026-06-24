@@ -1,0 +1,95 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Concilio: Auditar archivo abierto (Escolastico)",
+      "type": "shell",
+      "command": "py",
+      "args": [
+        "concilio_salamanca/main.py",
+        "--file", "${file}",
+        "--agents", "escolasticos",
+        "--rounds", "2"
+      ],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "group": { "kind": "build", "isDefault": false }
+    },
+    {
+      "label": "Concilio: Auditar archivo abierto (Ejecutivo rapido)",
+      "type": "shell",
+      "command": "py",
+      "args": [
+        "concilio_salamanca/main.py",
+        "--file", "${file}",
+        "--mode", "ejecutivo",
+        "--agents", "pragmaticos"
+      ],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Concilio: Auditar archivo abierto (Seguridad)",
+      "type": "shell",
+      "command": "py",
+      "args": [
+        "concilio_salamanca/main.py",
+        "--file", "${file}",
+        "--agents", "seguridad,promotor",
+        "--rounds", "3"
+      ],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Concilio: Auditar archivo abierto (Todos los agentes)",
+      "type": "shell",
+      "command": "py",
+      "args": [
+        "concilio_salamanca/main.py",
+        "--file", "${file}",
+        "--agents", "todos",
+        "--mode", "ejecutivo"
+      ],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Concilio: Escaneo rapido de anti-patrones",
+      "type": "shell",
+      "command": "py",
+      "args": [
+        "concilio_salamanca/main.py",
+        "audit",
+        "--file", "${file}"
+      ],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Concilio: Auditar con DeepSeek",
+      "type": "shell",
+      "command": "py",
+      "args": [
+        "concilio_salamanca/main.py",
+        "--file", "${file}",
+        "--provider", "deepseek",
+        "--model", "deepseek-chat",
+        "--agents", "escolasticos"
+      ],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Concilio: Listar agentes disponibles",
+      "type": "shell",
+      "command": "py",
+      "args": [
+        "concilio_salamanca/main.py",
+        "--list-agents"
+      ],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    }
+  ]
+}
