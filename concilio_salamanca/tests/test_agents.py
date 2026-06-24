@@ -1,0 +1,386 @@
+from __future__ import annotations
+
+import json
+from unittest.mock import MagicMock
+
+from concilio_salamanca.agents import (
+    AGENT_GROUPS,
+    AGENT_REGISTRY,
+    get_agent_cls,
+    get_agent_keys,
+    get_agent_label,
+    list_agents,
+    resolve_agents,
+)
+from concilio_salamanca.agents.arquitecto_larouche import ArquitectoLarouche
+from concilio_salamanca.agents.bjarne_stroustrup import BjarneStroustrup
+from concilio_salamanca.agents.defensor_causa_final import DefensorCausaFinal
+from concilio_salamanca.agents.defensor_leon_xiii import DefensorLeonXIII
+from concilio_salamanca.agents.doctor_materia import DoctorMateria
+from concilio_salamanca.agents.gennady_korotkevich import GennadyKorotkevich
+from concilio_salamanca.agents.auditor_dl import AuditorDeepLearning
+from concilio_salamanca.agents.analista_seguridad import AnalistaSeguridad
+from concilio_salamanca.agents.ingeniero_mlops import IngenieroMLOps
+from concilio_salamanca.agents.sanitario_datos import SanitarioDatos
+from concilio_salamanca.agents.arquitecto_sistemas import ArquitectoSistemas
+from concilio_salamanca.agents.ken_thompson import KenThompson
+from concilio_salamanca.agents.linus_torvalds import LinusTorvalds
+from concilio_salamanca.agents.magister_determinans import MagisterDeterminans
+from concilio_salamanca.agents.promotor_fidei import PromotorFidei
+from concilio_salamanca.agents.richard_stallman import RichardStallman
+from concilio_salamanca.agents.steve_wozniak import SteveWozniak
+from concilio_salamanca.debate.graph import create_salamanca_graph
+from concilio_salamanca.debate.orchestrator import DebateConfig, DebateOrchestrator
+from concilio_salamanca.debate.validator_pnc import ValidadorPNC
+from concilio_salamanca.license_generator import LicenseGenerator
+from concilio_salamanca.schemas import (
+    AgentOutput,
+    AgentVeredict,
+    Contradiccion,
+    Determinatio,
+    PnCValidation,
+    Silogismo,
+    Veredicto,
+)
+
+
+def _mock_model():
+    model = MagicMock()
+    model.invoke.return_value = MagicMock()
+    model.invoke.return_value.content = json.dumps(
+        {
+            "agente": "TestAgent",
+            "rol": "Test",
+            "silogismo": {
+                "premisa_mayor": "Todo A es B",
+                "premisa_menor": "X es A",
+                "conclusion": "X es B",
+            },
+            "principio_no_contradiccion": True,
+            "veredicto": "RESERVA",
+            "fundamento": "Test",
+        }
+    )
+    return model
+
+
+# --- Schema tests ---
+def test_silogismo_model():
+    s = Silogismo(
+        premisa_mayor="Todo A es B",
+        premisa_menor="X es A",
+        conclusion="X es B",
+    )
+    assert s.premisa_mayor == "Todo A es B"
+
+
+def test_veredicto_enum():
+    assert Veredicto.CONDENA.value == "CONDENA"
+    assert Veredicto.ABSUELVE.value == "ABSUELVE"
+    assert Veredicto.RESERVA.value == "RESERVA"
+
+
+def test_agent_veredict():
+    av = AgentVeredict(
+        agente="Promotor Fidei",
+        rol="Acusador",
+        silogismo=Silogismo(
+            premisa_mayor="Todo A es B",
+            premisa_menor="X es A",
+            conclusion="X es B",
+        ),
+        principio_no_contradiccion=True,
+        veredicto=Veredicto.CONDENA,
+        fundamento="Codigo inseguro",
+    )
+    assert av.veredicto == Veredicto.CONDENA
+
+
+def test_pnc_validation():
+    pnc = PnCValidation(
+        hay_contradicciones=True,
+        contradicciones=[
+            Contradiccion(
+                agente_a="A",
+                agente_b="B",
+                proposicion_a="P",
+                proposicion_b="no-P",
+                descripcion="Conflicto",
+            )
+        ],
+        resumen="Hay una contradiccion",
+    )
+    assert pnc.hay_contradicciones
+
+
+def test_determinatio():
+    d = Determinatio(
+        quaestio="Es seguro el codigo?",
+        videtur="Parece seguro",
+        sed_contra="Tiene vulnerabilidades",
+        respondeo="Debe corregirse",
+        determinatio_codici="Codigo corregido: ...",
+        veredicto_final=Veredicto.CONDENA,
+    )
+    assert d.veredicto_final == Veredicto.CONDENA
+
+
+# --- Agent tests (original 6 + new 6) ---
+def _test_agent(cls):
+    model = _mock_model()
+    agent = cls(model)
+    output = agent.act("print('hello')")
+    assert isinstance(output, AgentOutput)
+    assert output.structured is not None
+    return output
+
+
+def test_promotor_fidei():
+    _test_agent(PromotorFidei)
+
+
+def test_defensor_causa_final():
+    _test_agent(DefensorCausaFinal)
+
+
+def test_doctor_materia():
+    _test_agent(DoctorMateria)
+
+
+def test_arquitecto_larouche():
+    _test_agent(ArquitectoLarouche)
+
+
+def test_defensor_leon_xiii():
+    _test_agent(DefensorLeonXIII)
+
+
+def test_linus_torvalds():
+    _test_agent(LinusTorvalds)
+
+
+def test_steve_wozniak():
+    _test_agent(SteveWozniak)
+
+
+def test_richard_stallman():
+    _test_agent(RichardStallman)
+
+
+def test_bjarne_stroustrup():
+    _test_agent(BjarneStroustrup)
+
+
+def test_ken_thompson():
+    _test_agent(KenThompson)
+
+
+def test_gennady_korotkevich():
+    _test_agent(GennadyKorotkevich)
+
+
+def test_auditor_deep_learning():
+    _test_agent(AuditorDeepLearning)
+
+
+def test_analista_seguridad():
+    _test_agent(AnalistaSeguridad)
+
+
+def test_ingeniero_mlops():
+    _test_agent(IngenieroMLOps)
+
+
+def test_sanitario_datos():
+    _test_agent(SanitarioDatos)
+
+
+def test_arquitecto_sistemas():
+    _test_agent(ArquitectoSistemas)
+
+
+def test_magister_parse():
+    model = _mock_model()
+    magister = MagisterDeterminans(model)
+    raw = json.dumps({
+        "quaestio": "Es seguro?",
+        "videtur": "Parece seguro",
+        "sed_contra": "No lo es",
+        "respondeo": "Condenado",
+        "determinatio_codici": "Corregir X",
+        "veredicto_final": "CONDENA",
+    })
+    d = magister.parse_determinatio(raw)
+    assert d.veredicto_final == Veredicto.CONDENA
+
+
+def test_pnc_validator_parse():
+    model = _mock_model()
+    validator = ValidadorPNC(model)
+    raw = json.dumps({
+        "hay_contradicciones": True,
+        "contradicciones": [{
+            "agente_a": "Promotor Fidei",
+            "agente_b": "Defensor Causae Finalis",
+            "proposicion_a": "El codigo es inseguro",
+            "proposicion_b": "El codigo es seguro",
+            "descripcion": "Contradiccion directa",
+        }],
+        "resumen": "Existe una contradiccion fundamental",
+    })
+    result = validator._parse(raw)
+    assert result.hay_contradicciones
+    assert len(result.contradicciones) == 1
+
+
+# --- Agent registry tests ---
+def test_agent_registry_has_all_agents():
+    assert len(AGENT_REGISTRY) == 16
+    expected_keys = [
+        "promotor", "defensor", "doctor", "larouche", "leon_xiii",
+        "linus", "wozniak", "stallman", "stroustrup", "thompson", "korotkevich",
+    ]
+    for k in expected_keys:
+        assert k in AGENT_REGISTRY
+
+
+def test_resolve_agents_individual():
+    result = resolve_agents(["linus", "stallman"])
+    assert "linus" in result
+    assert "stallman" in result
+
+
+def test_resolve_agents_group():
+    result = resolve_agents(["escolasticos"])
+    assert "promotor" in result
+    assert "defensor" in result
+    assert "doctor" in result
+    assert "larouche" in result
+    assert "leon_xiii" in result
+
+
+def test_resolve_agents_mixed():
+    result = resolve_agents(["escolasticos", "linus", "stallman"])
+    assert "promotor" in result
+    assert "linus" in result
+    assert "stallman" in result
+
+
+def test_resolve_agents_todos():
+    result = resolve_agents(["todos"])
+    assert len(result) == 16
+
+
+def test_resolve_agents_no_duplicates():
+    result = resolve_agents(["promotor", "promotor", "escolasticos"])
+    assert result.count("promotor") == 1
+
+
+def test_get_agent_label():
+    assert "Promotor Fidei" in get_agent_label("promotor")
+    assert "Linus Torvalds" in get_agent_label("linus")
+    assert "Richard Stallman" in get_agent_label("stallman")
+
+
+def test_get_agent_cls():
+    assert get_agent_cls("linus") is LinusTorvalds
+    assert get_agent_cls("stallman") is RichardStallman
+    assert get_agent_cls("nonexistent") is None
+
+
+def test_agent_groups_exist():
+    assert "todos" in AGENT_GROUPS
+    assert "escolasticos" in AGENT_GROUPS
+    assert "pragmaticos" in AGENT_GROUPS
+    assert "eticos" in AGENT_GROUPS
+    assert "algoritmicos" in AGENT_GROUPS
+    assert "tecnicos" in AGENT_GROUPS
+    assert "acusacion" in AGENT_GROUPS
+    assert "defensa" in AGENT_GROUPS
+    assert "seguridad_completa" in AGENT_GROUPS
+    assert "ia_produccion" in AGENT_GROUPS
+
+
+# --- Orchestrator with custom agents ---
+def test_orchestrator_with_custom_agents():
+    model = _mock_model()
+    config = DebateConfig(
+        max_rounds=1,
+        include_pnc_validation=False,
+        agents=["linus", "stallman"],
+    )
+    orchestrator = DebateOrchestrator(model, config)
+    assert len(orchestrator.agent_keys) == 2
+    result = orchestrator.run_debate("print('hello')")
+    assert result["determinatio"] is not None
+
+
+# --- License tests ---
+def test_license_generator():
+    gen = LicenseGenerator(
+        developer_name="Test Dev",
+        project_name="Test Project",
+        github_repo="github.com/test/repo",
+    )
+    license_text = gen.generate_license("MX")
+    assert "Test Dev" in license_text
+    assert "Test Project" in license_text
+    assert "LPRN" in license_text
+    assert "Mandamiento" in license_text
+    assert "20,000" in license_text
+    assert "Auto-Favorito" in license_text
+    assert "github.com/test/repo" in license_text
+    assert "Star" in license_text
+    assert "Big Mac" in license_text
+    assert "Geo-Arbitraje" in license_text
+    assert "BME" in license_text
+
+
+def test_license_free_for_poor_devs():
+    gen = LicenseGenerator("Dev", "Proj")
+    text = gen.generate_license("US")
+    assert "Big Mac" in text
+    assert "gratis" in text.lower()
+    assert "open source" in text.lower()
+    assert "Auto-Favorito" in text
+
+
+def test_license_ppa_thresholds():
+    gen = LicenseGenerator()
+    thresholds_us = gen.get_localized_thresholds("US")
+    thresholds_in = gen.get_localized_thresholds("IN")
+    assert "big_mac_price_usd" in thresholds_us
+    assert thresholds_us["big_mac_price_usd"] > 0
+    assert thresholds_in["big_mac_price_usd"] > 0
+
+
+def test_big_mac_calculator():
+    from concilio_salamanca.license_generator import LicenseGenerator
+
+    result = LicenseGenerator.calculate_bme(1000, "US")
+    assert result["bme"] > 0
+    assert "%" in result["tasa"]
+
+
+def test_geo_arbitrage():
+    from concilio_salamanca.license_generator import LicenseGenerator
+
+    bme_mx_income_mx_residence = LicenseGenerator.calculate_bme(3000, "MX")
+    bme_us_income_mx_residence = LicenseGenerator.calculate_bme(8000, "MX", "US")
+    bme_us_income_us_residence = LicenseGenerator.calculate_bme(8000, "US")
+
+    assert bme_us_income_mx_residence["bme"] > bme_mx_income_mx_residence["bme"]
+    assert bme_us_income_mx_residence["tasa"] != "0%"
+
+
+def test_license_list_countries():
+    countries = LicenseGenerator.list_countries()
+    assert "US" in countries
+    assert "MX" in countries
+
+
+def test_list_agents_function():
+    text = list_agents()
+    assert "Linus Torvalds" in text
+    assert "Richard Stallman" in text
+    assert "Grupos predefinidos" in text
