@@ -526,3 +526,77 @@ def test_cross_paradigm_equivalence():
                            "A", "B", "C")
     eq_i = SyllogismReducer.find_equivalents(p_i)
     assert len(eq_i) >= 4
+
+
+def test_anti_patrones():
+    from concilio_salamanca.reference.anti_patrones import (
+        ANTI_PATRONES, buscar_anti_patrones, listar_anti_patrones, resumen_anti_patrones,
+    )
+
+    assert len(ANTI_PATRONES) >= 15
+    assert all(ap.id.startswith("AP-") for ap in ANTI_PATRONES)
+
+    results = buscar_anti_patrones("XSS")
+    assert len(results) >= 1
+    assert any("XSS" in ap.nombre for ap in results)
+
+    criticos = listar_anti_patrones(severidad="critica")
+    assert len(criticos) >= 3
+
+    resumen = resumen_anti_patrones()
+    assert "ANTI-PATRONES" in resumen
+    assert "FRONTEND" in resumen
+
+
+def test_componentes():
+    from concilio_salamanca.reference.componentes import (
+        COMPONENTES, buscar_componente, checklist_to_markdown, resumen_componentes,
+    )
+
+    assert len(COMPONENTES) >= 4
+
+    btn = buscar_componente("Button")
+    assert len(btn) >= 1
+    assert "loading" in btn[0].checklist[0].lower()
+
+    md = checklist_to_markdown(COMPONENTES[0])
+    assert "Checklist" in md
+    assert "```tsx" in md
+
+    resumen = resumen_componentes()
+    assert "COMPONENTES" in resumen
+
+
+def test_determinatio_template():
+    from concilio_salamanca.reference.determinatio_template import (
+        format_determinatio, format_agent_report,
+    )
+
+    ejecutivo = format_determinatio(
+        modo="ejecutivo",
+        quaestio="Test",
+        videtur="Parece bien",
+        sed_contra="Tiene fallos",
+        respondeo="Corregir",
+        determinatio_codici="Codigo corregido",
+        veredicto_final="CONDENA",
+        rondas=2,
+        num_agentes=3,
+    )
+    assert "Auditoria de Codigo" in ejecutivo
+    assert "| Veredicto |" not in ejecutivo or "Veredicto" in ejecutivo
+    assert "Test" in ejecutivo
+
+    escolastico = format_determinatio(
+        modo="escolastico",
+        quaestio="Test",
+        videtur="Bien",
+        sed_contra="Mal",
+        respondeo="Corregir",
+        determinatio_codici="Ok",
+        veredicto_final="ABSUELVE",
+        participantes="- Agente 1",
+        pnc_resumen="Sin contradicciones",
+    )
+    assert "DETERMINATIO MAGISTRAL" in escolastico
+    assert "Sic determinat Magister" in escolastico

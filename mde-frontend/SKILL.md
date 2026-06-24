@@ -1,21 +1,39 @@
 ---
 name: mde-frontend
 description: >
-  Frontend development guided by the Metadialectic Scholastic Method (MDE) — a 
-  neurosymbolic framework that subjects every line of code to deductive syllogism, 
-  Aristotelian causal analysis, and transcendental KPI validation (Verum/Bonum/Pulchrum). 
-  Use when building React + TypeScript + Tailwind CSS + Three.js/WebGL interfaces 
-  that demand ontological purity: component architecture, UI composition, color systems, 
-  shader design, animation choreography, and layout proportionality. Triggers for any 
-  frontend task where design decisions must be justified by formal logic rather than taste.
-  Covers Atomic Design hierarchy, Feature-Sliced Design boundaries, React composition 
-  patterns, R3F scene construction, and aesthetic determinatio via syllogistic reasoning.
+  Skill operativa para desarrollar interfaces frontend con React, TypeScript, Tailwind y Three.js
+  usando un marco de razonamiento MDE: silogismos, causas aristotélicas, KPIs y validación de
+  accesibilidad, rendimiento y estética. Úsala para arquitectura de componentes, diseño visual,
+  animaciones, shaders y decisiones de UI que deban justificarse de forma explícita.
 ---
 
 # MDE-Frontend: Motor Silogístico del Diseño Web
 
 > *"Cogito Ergo Code — Ningún elemento DOM será renderizado sin demostrar su necesidad 
 > a través del silogismo deductivo."*
+
+## Guía Operativa de la Skill
+
+Usa esta skill cuando la tarea implique una decisión de interfaz que requiera justificar por qué se implementa de una forma concreta y no por gusto personal. La salida esperada debe ser práctica y verificable:
+
+1. Resumen breve del problema y la intención de la UI.
+2. Decisión técnica con causa formal y causa final explícitas.
+3. Implementación concreta, con componentes, tokens o estructura de datos.
+4. Validación de accesibilidad, rendimiento y armonía visual.
+5. Riesgos o límites de la solución propuesta.
+
+### Reglas de uso
+- Prioriza claridad sobre ornamentación filosófica: la parte conceptual debe servir a la decisión técnica.
+- No introduzcas librerías nuevas sin justificar su necesidad y su coste.
+- Si la tarea es puramente visual, documenta la razón del diseño y evita sobrecomplicarla.
+- Para validar, usa los recursos del repositorio: references/ para principios y patrones, y scripts/validador_kpi.py y scripts/generador_paleta.py para comprobar calidad.
+
+### Checklist de calidad antes de entregar
+- [ ] Se identificó la causa final de la interfaz.
+- [ ] El componente se clasificó correctamente como átomo, molécula, organismo o página.
+- [ ] La solución respeta principios de separación de responsabilidades y dependencias.
+- [ ] La implementación cumple accesibilidad básica y semántica HTML5.
+- [ ] Se revisaron KPIs de rendimiento, contraste y armonía visual.
 
 ## Stack Ontológico
 

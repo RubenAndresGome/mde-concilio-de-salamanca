@@ -56,7 +56,39 @@ def detect_language(code: str) -> str:
     return "auto"
 
 
-def format_output_json(result: dict) -> str:
+def format_output_executive(result: dict, agent_labels: list, rounds: int) -> str:
+    from concilio_salamanca.reference.determinatio_template import format_determinatio
+
+    determinatio = result.get("determinatio")
+    pnc = result.get("pnc_validation")
+
+    if not determinatio:
+        return "Error: No se pudo generar la determinatio."
+
+    pnc_resumen = "Sin contradicciones detectadas."
+    num_contradicciones = 0
+    if pnc and pnc.hay_contradicciones:
+        num_contradicciones = len(pnc.contradicciones)
+        pnc_resumen = f"{num_contradicciones} contradiccion(es) detectada(s): " + "; ".join(
+            f"{c.agente_a} vs {c.agente_b}" for c in pnc.contradicciones
+        )
+
+    participantes_text = "\n".join(f"- {label}" for label in agent_labels)
+
+    return format_determinatio(
+        modo="ejecutivo",
+        quaestio=determinatio.quaestio,
+        videtur=determinatio.videtur,
+        sed_contra=determinatio.sed_contra,
+        respondeo=determinatio.respondeo,
+        determinatio_codici=determinatio.determinatio_codici,
+        veredicto_final=determinatio.veredicto_final.value,
+        participantes=participantes_text,
+        pnc_resumen=pnc_resumen,
+        rondas=rounds,
+        num_agentes=len(agent_labels),
+        num_contradicciones=num_contradicciones,
+    )
     determinatio = result.get("determinatio")
     pnc = result.get("pnc_validation")
 
@@ -223,6 +255,11 @@ def main():
         help="Agentes del debate (claves separadas por comas o nombre de grupo). Usa --list-agents para ver opciones.",
     )
     parser.add_argument(
+        "--mode", type=str, default="escolastico",
+        choices=["escolastico", "ejecutivo"],
+        help="Modo de salida: escolastico (completo) o ejecutivo (informe tecnico reducido)",
+    )
+    parser.add_argument(
         "--interactive", "-i",
         action="store_true",
         help="Seleccion interactiva de agentes",
@@ -231,6 +268,16 @@ def main():
         "--list-agents",
         action="store_true",
         help="Listar agentes y grupos disponibles y salir",
+    )
+    parser.add_argument(
+        "--list-anti-patrones",
+        action="store_true",
+        help="Listar catalogo de anti-patrones y salir",
+    )
+    parser.add_argument(
+        "--list-componentes",
+        action="store_true",
+        help="Listar ejemplos de componentes de referencia y salir",
     )
     parser.add_argument(
         "--no-pnc",
@@ -297,6 +344,16 @@ def main():
     if args.list_agents:
         from concilio_salamanca.agents import list_agents
         print(list_agents())
+        return
+
+    if args.list_anti_patrones:
+        from concilio_salamanca.reference.anti_patrones import resumen_anti_patrones
+        print(resumen_anti_patrones())
+        return
+
+    if args.list_componentes:
+        from concilio_salamanca.reference.componentes import resumen_componentes
+        print(resumen_componentes())
         return
 
     if args.command == "license":
@@ -393,6 +450,7 @@ def main():
 
     print(f"Concilio de Salamanca convocado.")
     print(f"  Modelo:     {model_name}")
+    print(f"  Modo:       {args.mode}")
     print(f"  Rondas:     {max_rounds}")
     print(f"  PnC:        {'Activado' if enable_pnc else 'Desactivado'}")
     print(f"  Lenguaje:   {language}")
@@ -420,12 +478,15 @@ def main():
     orchestrator = DebateOrchestrator(model, config)
     result = orchestrator.run_debate(code, language)
 
-    formatters = {
-        "json": format_output_json,
-        "text": format_output_text,
-        "markdown": format_output_markdown,
-    }
-    output = formatters[args.output](result)
+    if args.mode == "ejecutivo" and args.output == "text":
+        output = format_output_executive(result, agent_labels, max_rounds)
+    else:
+        formatters = {
+            "json": format_output_json,
+            "text": format_output_text,
+            "markdown": format_output_markdown,
+        }
+        output = formatters[args.output](result)
     print(output)
 
     if args.save:
