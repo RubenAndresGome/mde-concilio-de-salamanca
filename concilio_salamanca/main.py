@@ -246,6 +246,11 @@ def main():
     parser.add_argument(
         "--save", "-s", type=str, default=None, help="Guardar veredicto en archivo"
     )
+    parser.add_argument(
+        "--cache-stats",
+        action="store_true",
+        help="Mostrar estadisticas del cache de silogismos",
+    )
 
     subparsers = parser.add_subparsers(dest="command", help="Comandos adicionales")
 
@@ -400,6 +405,12 @@ def main():
     model = ChatOpenAI(model=model_name, temperature=temperature, api_key=api_key)
 
     from concilio_salamanca.debate.orchestrator import DebateConfig, DebateOrchestrator
+
+    if args.cache_stats:
+        from concilio_salamanca.debate.syllogism_cache import get_syllogism_cache
+        cache = get_syllogism_cache()
+        print(cache.summary())
+        print()
 
     config = DebateConfig(
         max_rounds=max_rounds,

@@ -384,3 +384,57 @@ def test_list_agents_function():
     assert "Linus Torvalds" in text
     assert "Richard Stallman" in text
     assert "Grupos predefinidos" in text
+
+
+def test_syllogism_cache():
+    from concilio_salamanca.debate.syllogism_cache import (
+        SyllogismCache,
+        SyllogismCompressor,
+        SyllogismPattern,
+        PropositionType,
+        CacheEntry,
+    )
+
+    pattern = SyllogismPattern(
+        major_type=PropositionType.A,
+        minor_type=PropositionType.A,
+        conclusion_type=PropositionType.A,
+        figure=1,
+        subject="codigo_inseguro",
+        predicate="condenable",
+        middle="sin_validacion",
+    )
+
+    rel, result = pattern.to_set_relation()
+    assert rel is not None
+    assert "SUBSET" in result or "subset" in result.lower()
+
+    compressed = SyllogismCompressor.compress_to_set(pattern)
+    assert "Barbara" in compressed
+
+    fp = pattern.fingerprint()
+    assert len(fp) == 16
+
+    import tempfile, os
+    tmp = os.path.join(tempfile.gettempdir(), "test_syl_cache.json")
+    cache = SyllogismCache(cache_path=tmp)
+    cached = cache.lookup(pattern)
+    assert cached is None
+
+    entry = CacheEntry(
+        fingerprint=fp,
+        pattern=pattern,
+        set_relation=result,
+        conclusion_text="El codigo es condenable",
+        agent="Promotor Fidei",
+        timestamp=0,
+    )
+    cache.entries[fp] = entry
+    cache.save()
+
+    cache2 = SyllogismCache(cache_path=tmp)
+    found = cache2.lookup(pattern)
+    assert found is not None
+
+    if os.path.exists(tmp):
+        os.remove(tmp)

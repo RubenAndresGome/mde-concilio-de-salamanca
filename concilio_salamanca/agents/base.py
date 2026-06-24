@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from abc import ABC, abstractmethod
@@ -22,11 +23,11 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
   "silogismo": {{{{
     "premisa_mayor": "Premisa universal...",
     "premisa_menor": "Premisa particular...",
-    "conclusion": "Conclusión necesaria deducida..."
+    "conclusion": "Conclusion necesaria deducida..."
   }}}},
   "principio_no_contradiccion": true,
   "veredicto": "CONDENA|ABSUELVE|RESERVA",
-  "fundamento": "Razón del veredicto..."
+  "fundamento": "Razon del veredicto..."
 }}}}
 """
 
@@ -40,22 +41,99 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
             role_name=self.role_name, role=self.role_name
         )
         system = SystemMessage(content=self.system_prompt + "\n\n" + schema)
-        user_content = f"Analiza el siguiente código según tu rol de {self.role_name}:\n\n```\n{code}\n```"
+        user_content = f"Analiza el siguiente codigo segun tu rol de {self.role_name}:\n\n```\n{code}\n```"
         if context:
-            user_content += "\n\n--- ARGUMENTOS DE OTROS AGENTES PARA REFUTACIÓN ---\n"
+            user_content += "\n\n--- ARGUMENTOS DE OTROS AGENTES PARA REFUTACION ---\n"
             for agente, argumento in context.items():
                 user_content += f"\n### {agente}:\n{argumento}\n"
         return [system, HumanMessage(content=user_content)]
 
+    def _code_fingerprint(self, code: str) -> str:
+        return hashlib.sha256(
+            f"{self.role_name}|{code}".encode()
+        ).hexdigest()[:24]
+
+    def _check_code_cache(self, code: str) -> Optional[AgentOutput]:
+        from concilio_salamanca.debate.syllogism_cache import get_syllogism_cache
+        cache = get_syllogism_cache()
+        fp = self._code_fingerprint(code)
+        entry = cache.entries.get(f"code:{fp}")
+        if entry and hasattr(entry, 'conclusion_text'):
+            cached = AgentOutput(
+                raw=entry.conclusion_text,
+                structured=None,
+                timestamp=time.time(),
+            )
+            return cached
+        return None
+
+    def _store_code_cache(self, code: str, output: AgentOutput):
+        from concilio_salamanca.debate.syllogism_cache import (
+            get_syllogism_cache,
+            CacheEntry,
+            PropositionType,
+            SyllogismPattern,
+        )
+        from concilio_salamanca.debate.syllogism_cache import SyllogismCompressor
+
+        cache = get_syllogism_cache()
+        fp = self._code_fingerprint(code)
+
+        pattern = SyllogismPattern(
+            major_type=PropositionType.A,
+            minor_type=PropositionType.A,
+            conclusion_type=PropositionType.A,
+            figure=1,
+            subject="",
+            predicate="",
+            middle="",
+        )
+
+        entry = CacheEntry(
+            fingerprint=f"code:{fp}",
+            pattern=pattern,
+            set_relation="",
+            conclusion_text=output.raw,
+            agent=self.role_name,
+            timestamp=time.time(),
+        )
+        cache.entries[f"code:{fp}"] = entry
+        cache.save()
+
+        if output.structured:
+            sil_pattern = SyllogismCompressor.extract_from_json(
+                output.structured.model_dump()
+            )
+            if sil_pattern:
+                rel, _ = sil_pattern.to_set_relation()
+                compressed = SyllogismCompressor.compress_to_set(sil_pattern)
+                sil_entry = CacheEntry(
+                    fingerprint=sil_pattern.fingerprint(),
+                    pattern=sil_pattern,
+                    set_relation=compressed,
+                    conclusion_text=output.raw[:2000],
+                    agent=self.role_name,
+                    timestamp=time.time(),
+                )
+                cache.entries[sil_pattern.fingerprint()] = sil_entry
+                cache.save()
+
     def reason(
         self, code: str, context: Optional[Dict[str, str]] = None
     ) -> AgentOutput:
+        cached = self._check_code_cache(code)
+        if cached:
+            return cached
+
         messages = self._build_messages(code, context)
         ts = time.time()
         response = self.model.invoke(messages)
         raw = response.content
         structured = self._parse_response(raw)
-        return AgentOutput(raw=raw, structured=structured, timestamp=ts)
+        output = AgentOutput(raw=raw, structured=structured, timestamp=ts)
+
+        self._store_code_cache(code, output)
+        return output
 
     def _parse_response(self, raw: str) -> Optional[AgentVeredict]:
         try:
