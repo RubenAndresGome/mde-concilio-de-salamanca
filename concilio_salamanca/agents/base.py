@@ -59,9 +59,10 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
         fp = self._code_fingerprint(code)
         entry = cache.entries.get(f"code:{fp}")
         if entry and hasattr(entry, 'conclusion_text'):
+            structured = self._parse_response(entry.conclusion_text)
             cached = AgentOutput(
                 raw=entry.conclusion_text,
-                structured=None,
+                structured=structured,
                 timestamp=time.time(),
             )
             return cached
@@ -73,8 +74,8 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
             CacheEntry,
             PropositionType,
             SyllogismPattern,
+            SyllogismReducer,
         )
-        from concilio_salamanca.debate.syllogism_cache import SyllogismCompressor
 
         cache = get_syllogism_cache()
         fp = self._code_fingerprint(code)
@@ -98,15 +99,14 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
             timestamp=time.time(),
         )
         cache.entries[f"code:{fp}"] = entry
-        cache.save()
 
         if output.structured:
-            sil_pattern = SyllogismCompressor.extract_from_json(
+            sil_pattern = SyllogismReducer.extract_from_json(
                 output.structured.model_dump()
             )
             if sil_pattern:
-                rel, _ = sil_pattern.to_set_relation()
-                compressed = SyllogismCompressor.compress_to_set(sil_pattern)
+                unified = SyllogismReducer.reduce_all(sil_pattern)
+                compressed = SyllogismReducer.format_memory_compressed(unified)
                 sil_entry = CacheEntry(
                     fingerprint=sil_pattern.fingerprint(),
                     pattern=sil_pattern,
@@ -116,7 +116,9 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
                     timestamp=time.time(),
                 )
                 cache.entries[sil_pattern.fingerprint()] = sil_entry
-                cache.save()
+                cache.unified_store[unified.key] = unified
+
+        cache.save()
 
     def reason(
         self, code: str, context: Optional[Dict[str, str]] = None
@@ -132,7 +134,10 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
         structured = self._parse_response(raw)
         output = AgentOutput(raw=raw, structured=structured, timestamp=ts)
 
-        self._store_code_cache(code, output)
+        try:
+            self._store_code_cache(code, output)
+        except Exception:
+            pass
         return output
 
     def _parse_response(self, raw: str) -> Optional[AgentVeredict]:

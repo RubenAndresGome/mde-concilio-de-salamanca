@@ -389,7 +389,7 @@ def test_list_agents_function():
 def test_syllogism_cache():
     from concilio_salamanca.debate.syllogism_cache import (
         SyllogismCache,
-        SyllogismCompressor,
+        SyllogismReducer,
         SyllogismPattern,
         PropositionType,
         CacheEntry,
@@ -409,7 +409,7 @@ def test_syllogism_cache():
     assert rel is not None
     assert "SUBSET" in result or "subset" in result.lower()
 
-    compressed = SyllogismCompressor.compress_to_set(pattern)
+    compressed = SyllogismReducer.compress_to_set(pattern)
     assert "Barbara" in compressed
 
     fp = pattern.fingerprint()
@@ -438,3 +438,91 @@ def test_syllogism_cache():
 
     if os.path.exists(tmp):
         os.remove(tmp)
+
+
+def test_syllogism_trinivel():
+    from concilio_salamanca.debate.syllogism_cache import (
+        SyllogismReducer,
+        SyllogismPattern,
+        PropositionType,
+    )
+
+    pattern = SyllogismPattern(
+        major_type=PropositionType.A,
+        minor_type=PropositionType.A,
+        conclusion_type=PropositionType.A,
+        figure=1,
+        subject="funcion",
+        predicate="defectuosa",
+        middle="sin_validar",
+    )
+
+    unified = SyllogismReducer.reduce_all(pattern)
+    assert unified.mode_name == "Barbara"
+    assert unified.vocal_pattern == "AAA"
+    assert unified.figure == 1
+
+    assert "Todo" in unified.scholastic.premise_major_scheme
+    assert "SUBSET" in unified.set_theory.conclusion_equation
+    assert "forall" in unified.predicate_logic.major_formula or "todo" in unified.predicate_logic.major_formula.lower()
+
+    assert len(unified.predicate_logic.derivation_steps) == 6
+
+    compressed = SyllogismReducer.format_memory_compressed(unified)
+    assert "Barbara" in compressed
+    assert "funcion" in compressed
+    assert "subset" in compressed.lower()
+
+    full = SyllogismReducer.format_full_report(unified)
+    assert "Nivel 1" in full
+    assert "Nivel 2" in full
+    assert "Nivel 3" in full
+    assert "Aristoteles" in full
+    assert "Boole" in full
+    assert "Frege" in full
+
+
+def test_syllogism_celarent():
+    from concilio_salamanca.debate.syllogism_cache import (
+        SyllogismReducer, SyllogismPattern, PropositionType,
+    )
+
+    pattern = SyllogismPattern(
+        major_type=PropositionType.E,
+        minor_type=PropositionType.A,
+        conclusion_type=PropositionType.E,
+        figure=1,
+        subject="codigo",
+        predicate="seguro",
+        middle="validado",
+    )
+
+    unified = SyllogismReducer.reduce_all(pattern)
+    assert unified.mode_name == "Celarent"
+    assert unified.vocal_pattern == "EAE"
+
+    st = unified.set_theory
+    assert "empty" in st.conclusion_equation.lower()
+
+    pt = unified.predicate_logic
+    assert "not" in pt.major_formula.lower()
+
+
+def test_cross_paradigm_equivalence():
+    from concilio_salamanca.debate.syllogism_cache import SyllogismReducer, SyllogismPattern, PropositionType
+
+    p1 = SyllogismPattern(PropositionType.A, PropositionType.A, PropositionType.A, 1,
+                          "X", "Y", "Z")
+
+    uf1 = SyllogismReducer.unified_fingerprint(p1)
+    assert len(uf1) == 16
+
+    assert SyllogismReducer._deduce_figure(PropositionType.A, PropositionType.A, PropositionType.A) == 1
+
+    eq = SyllogismReducer.find_equivalents(p1)
+    assert "Barbara (AAA-1)" in eq
+
+    p_i = SyllogismPattern(PropositionType.A, PropositionType.I, PropositionType.I, 1,
+                           "A", "B", "C")
+    eq_i = SyllogismReducer.find_equivalents(p_i)
+    assert len(eq_i) >= 4
