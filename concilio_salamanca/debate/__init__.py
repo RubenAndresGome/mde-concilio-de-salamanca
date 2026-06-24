@@ -16,6 +16,13 @@ from concilio_salamanca.debate.syllogism_cache import (
     UnifiedSyllogism,
     get_syllogism_cache,
 )
+from concilio_salamanca.debate.providers import (
+    PROVIDERS,
+    create_model,
+    get_provider_info,
+    list_providers,
+    resolve_api_key,
+)
 
 __all__ = [
     "DebateConfig",
@@ -33,4 +40,9 @@ __all__ = [
     "UnifiedSyllogism",
     "CacheEntry",
     "get_syllogism_cache",
+    "PROVIDERS",
+    "create_model",
+    "get_provider_info",
+    "list_providers",
+    "resolve_api_key",
 ]
