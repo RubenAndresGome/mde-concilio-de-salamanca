@@ -1,9 +1,58 @@
+﻿# Bytecode / Python artifacts
 __pycache__/
-*.pyc
-*.pyo
-syllogism_cache.json
-*.egg-info/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
 dist/
-.env
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+*.egg
+
+# Virtual environments
 .venv/
+venv/
+env/
+ENV/
+.python-version
+
+# Test / quality tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+pytest-debug.log*
+
+# Runtime / generated data
+concilio_salamanca/debate/syllogism_cache.json
+concilio_salamanca/debate/precedents.json
+concilio_salamanca/veredictos/
 veredictos/
+*.log
+*.tmp
+*.bak
+*.pid
+*.sqlite3
+
+# Local secrets / environment
+.env
+.env.*
+!.env.example
+*.local
+
+# Project-specific local state
+.opencode/
+
+# IDE / OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+.DS_Store
+Thumbs.db
