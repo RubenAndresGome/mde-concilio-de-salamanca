@@ -24,6 +24,10 @@ from concilio_salamanca.agents.llull import Llull
 from concilio_salamanca.agents.bacon import Bacon
 from concilio_salamanca.agents.vitoria import Vitoria
 from concilio_salamanca.agents.ratio import Ratio
+from concilio_salamanca.agents.ponytail import Ponytail
+from concilio_salamanca.agents.graphify import Graphify
+from concilio_salamanca.agents.rtk import RTK
+from concilio_salamanca.agents.telemetry import Telemetry
 
 AGENT_REGISTRY = {
     "promotor": ("Promotor Fidei", PromotorFidei),
@@ -50,6 +54,10 @@ AGENT_REGISTRY = {
     "bacon": ("Magister Experientiae (Roger Bacon)", Bacon),
     "vitoria": ("Custos Iuris (Francisco de Vitoria)", Vitoria),
     "ratio": ("Magister Pedagogiae (Ratio Studiorum)", Ratio),
+    "ponytail": ("Magister Minimalis (Ponytail/YAGNI)", Ponytail),
+    "graphify": ("Magister Ontologicus (Graphify)", Graphify),
+    "rtk": ("Magister Signalis (RTK)", RTK),
+    "telemetry": ("Magister Telemetriae (Token Auditor)", Telemetry),
 }
 
 AGENT_GROUPS = {
@@ -70,6 +78,7 @@ AGENT_GROUPS = {
     "ius_gentium": ["vitoria", "stallman", "leon_xiii"],
     "pedagogicos": ["ratio", "socrates"],
     "empiristas": ["bacon", "linus", "thompson"],
+    "token_optimizers": ["ponytail", "rtk", "telemetry", "graphify"],
 }
 
 def get_agent_keys() -> list:
@@ -129,6 +138,10 @@ __all__ = [
     "Bacon",
     "Vitoria",
     "Ratio",
+    "Ponytail",
+    "Graphify",
+    "RTK",
+    "Telemetry",
     "AGENT_REGISTRY",
     "AGENT_GROUPS",
     "get_agent_keys",

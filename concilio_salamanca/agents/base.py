@@ -126,13 +126,25 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
         cache.save()
 
     def reason(
-        self, code: str, context: Optional[Dict[str, str]] = None
+        self, code: str, context: Optional[Dict[str, str]] = None,
+        max_tokens: int = 0,
     ) -> AgentOutput:
         cached = self._check_code_cache(code)
         if cached:
             return cached
 
         messages = self._build_messages(code, context)
+
+        if max_tokens > 0:
+            budget_instruction = (
+                f"RESTRICCION DE TOKENS: Tu respuesta no debe exceder aproximadamente "
+                f"{max_tokens} tokens (~{max_tokens // 4} palabras). "
+                f"Se conciso. Elimina toda palabra innecesaria. Ve directo a la conclusion."
+            )
+            messages[0] = SystemMessage(
+                content=messages[0].content + "\n\n" + budget_instruction
+            )
+
         ts = time.time()
         response = self.model.invoke(messages)
         raw = response.content

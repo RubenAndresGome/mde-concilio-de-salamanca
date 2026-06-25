@@ -33,6 +33,10 @@ from concilio_salamanca.agents.llull import Llull
 from concilio_salamanca.agents.bacon import Bacon
 from concilio_salamanca.agents.vitoria import Vitoria
 from concilio_salamanca.agents.ratio import Ratio
+from concilio_salamanca.agents.ponytail import Ponytail
+from concilio_salamanca.agents.graphify import Graphify
+from concilio_salamanca.agents.rtk import RTK
+from concilio_salamanca.agents.telemetry import Telemetry
 from concilio_salamanca.agents.ken_thompson import KenThompson
 from concilio_salamanca.agents.linus_torvalds import LinusTorvalds
 from concilio_salamanca.agents.magister_determinans import MagisterDeterminans
@@ -241,6 +245,22 @@ def test_ratio():
     _test_agent(Ratio)
 
 
+def test_ponytail():
+    _test_agent(Ponytail)
+
+
+def test_graphify():
+    _test_agent(Graphify)
+
+
+def test_rtk():
+    _test_agent(RTK)
+
+
+def test_telemetry():
+    _test_agent(Telemetry)
+
+
 def test_magister_parse():
     model = _mock_model()
     magister = MagisterDeterminans(model)
@@ -277,7 +297,7 @@ def test_pnc_validator_parse():
 
 # --- Agent registry tests ---
 def test_agent_registry_has_all_agents():
-    assert len(AGENT_REGISTRY) == 24
+    assert len(AGENT_REGISTRY) == 28
     expected_keys = [
         "promotor", "defensor", "doctor", "larouche", "leon_xiii",
         "linus", "wozniak", "stallman", "stroustrup", "thompson", "korotkevich",
@@ -310,7 +330,7 @@ def test_resolve_agents_mixed():
 
 def test_resolve_agents_todos():
     result = resolve_agents(["todos"])
-    assert len(result) == 24
+    assert len(result) == 28
 
 
 def test_resolve_agents_no_duplicates():
