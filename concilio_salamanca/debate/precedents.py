@@ -10,14 +10,13 @@ Indice: TF-IDF ligero sobre los terminos S, P, M de cada silogismo.
 from __future__ import annotations
 
 import json
-import math
 import time
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from concilio_salamanca.debate.syllogism_cache import SyllogismReducer, SyllogismPattern, UnifiedSyllogism
+from concilio_salamanca.debate.syllogism_cache import SyllogismReducer, UnifiedSyllogism
 
 
 @dataclass
@@ -50,15 +49,25 @@ class PrecedentEngine:
                     prec = Precedent(**p)
                     self.precedents.append(prec)
                     for term_key, term_val in prec.terms.items():
-                        self._term_index[term_val.lower()].append(len(self.precedents) - 1)
+                        self._term_index[term_val.lower()].append(
+                            len(self.precedents) - 1
+                        )
             except (json.JSONDecodeError, TypeError):
                 pass
 
     def save(self):
         data = [p.__dict__ for p in self.precedents]
-        self.path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        self.path.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
 
-    def add(self, unified: UnifiedSyllogism, veredicto: str, agent: str, code_snippet: str = ""):
+    def add(
+        self,
+        unified: UnifiedSyllogism,
+        veredicto: str,
+        agent: str,
+        code_snippet: str = "",
+    ):
         prec = Precedent(
             fingerprint=unified.key,
             terms=unified.terms,
@@ -138,13 +147,18 @@ class PrecedentEngine:
         code = state.get("code", "")[:500]
         for agent_name, raw in last.items():
             try:
-                data = json.loads(raw) if isinstance(raw, str) and raw.strip().startswith("{") else {"silogismo": {}, "veredicto": "RESERVA"}
+                data = (
+                    json.loads(raw)
+                    if isinstance(raw, str) and raw.strip().startswith("{")
+                    else {"silogismo": {}, "veredicto": "RESERVA"}
+                )
                 if data.get("silogismo"):
                     pattern = SyllogismReducer.extract_from_json(data)
                     if pattern:
                         unified = SyllogismReducer.reduce_all(pattern)
-                        self.add(unified, data.get("veredicto", "RESERVA"),
-                                 agent_name, code)
+                        self.add(
+                            unified, data.get("veredicto", "RESERVA"), agent_name, code
+                        )
             except Exception:
                 pass
 

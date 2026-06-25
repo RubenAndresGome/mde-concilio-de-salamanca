@@ -1,13 +1,15 @@
 """
 Factory multi-proveedor de modelos LLM para el Concilio de Salamanca.
 
-Soporta: OpenAI, DeepSeek, Anthropic, Groq, Ollama, opencode.
-Cada proveedor se configura via nombre, key de entorno, y base_url opcional.
+Soporta: OpenAI, DeepSeek, Anthropic, Groq, Ollama, OpenRouter, opencode.
+Incluye ModelRanker para seleccion automatica calidad-precio-disponibilidad
+y warning economico para modelos caros.
 """
 
 from __future__ import annotations
 
 import os
+import warnings
 from importlib import import_module
 from typing import Any, Dict, Optional
 
@@ -45,6 +47,13 @@ PROVIDERS: Dict[str, Dict[str, Any]] = {
         "env_key": "",
         "default_model": "llama3",
     },
+    "openrouter": {
+        "cls": "ChatOpenAI",
+        "pkg": "langchain_openai",
+        "env_key": "OPENROUTER_API_KEY",
+        "base_url": "https://openrouter.ai/api/v1",
+        "default_model": "deepseek/deepseek-v4-flash",
+    },
     "opencode": {
         "cls": "ChatOpenAI",
         "pkg": "langchain_openai",
@@ -52,6 +61,26 @@ PROVIDERS: Dict[str, Dict[str, Any]] = {
         "default_model": "gpt-4o",
     },
 }
+
+_WARNED_EXPENSIVE: set = set()
+
+
+def _warn_expensive(provider: str, model: str, cost_est: float = 0):
+    key = f"{provider}/{model}"
+    if key in _WARNED_EXPENSIVE:
+        return
+    _WARNED_EXPENSIVE.add(key)
+    if cost_est > 10:
+        warnings.warn(
+            f"ALTO COSTO: modelo {key} (~${cost_est:.2f}/MTok). "
+            f"Considera --provider-obreros deepseek --provider-magister openai",
+            RuntimeWarning,
+        )
+    elif cost_est > 1:
+        warnings.warn(
+            f"COSTO MODERADO: modelo {key} (~${cost_est:.2f}/MTok).",
+            RuntimeWarning,
+        )
 
 
 def get_provider_info(provider: str) -> Dict[str, Any]:
@@ -97,7 +126,93 @@ def create_model(
 def resolve_api_key(provider: str, cli_key: Optional[str] = None) -> Optional[str]:
     info = get_provider_info(provider)
     env_key = info.get("env_key", "")
-    return cli_key or os.environ.get(env_key) or os.environ.get("OPENAI_API_KEY") or None
+    resolved = cli_key or os.environ.get(env_key)
+    if not resolved and env_key:
+        fallback = os.environ.get("OPENAI_API_KEY")
+        if fallback and provider != "openai":
+            warnings.warn(
+                f"Sin ${env_key}. Cayendo a OPENAI_API_KEY. "
+                f"Podrias facturar en OpenAI en lugar de {provider}.",
+                RuntimeWarning,
+            )
+        return fallback or None
+    return resolved or os.environ.get("OPENAI_API_KEY") or None
+
+
+def get_sorted_providers_by_weight(weights_config: dict) -> list:
+    valid = []
+    for prov, weight in weights_config.items():
+        prov = prov.lower().strip()
+        if prov in PROVIDERS and isinstance(weight, (int, float)) and weight > 0:
+            valid.append((prov, float(weight)))
+    valid.sort(key=lambda x: x[1], reverse=True)
+    return valid
+
+
+def _model_id_to_provider(model_id: str) -> str:
+    prefix = model_id.split("/")[0]
+    if prefix in PROVIDERS:
+        return prefix
+    if prefix in ("meta-llama",):
+        return "openrouter"
+    if prefix in ("ollama",):
+        return "ollama"
+    return "openrouter"
+
+
+def resolve_provider_from_weights(
+    weights_config: dict,
+    role: str = "ejecutor",
+    roles_config: dict = None,
+    prefer_local: bool = True,
+) -> dict:
+    """Resolves the best provider and model for a given role.
+
+    Supports 'auto' resolution via ModelRanker when role value is 'auto'.
+
+    Args:
+        weights_config: dict of provider -> weight
+        role: 'ejecutor', 'director_strategy', or 'auto' for ModelRanker
+        roles_config: dict mapping role -> provider name (optional override)
+        prefer_local: if True, prefer Ollama local models
+
+    Returns:
+        dict with 'provider' and 'model' keys.
+    """
+    explicit_role = (roles_config or {}).get(role, "")
+    if explicit_role == "auto" or role == "auto":
+        from concilio_salamanca.debate.model_pricing import ModelRanker
+
+        task_tags = ["reasoning"] if role == "director_strategy" else ["fast"]
+        best = ModelRanker.best_for_role(
+            role=role, prefer_local=prefer_local, task_tags=task_tags
+        )
+        if best:
+            model_id = best.id
+            prov = _model_id_to_provider(model_id)
+            _warn_expensive(prov, model_id, best.price_in_1m)
+            return {"provider": prov, "model": model_id}
+
+    sorted_providers = get_sorted_providers_by_weight(weights_config)
+
+    if roles_config and role in roles_config:
+        explicit = roles_config[role].lower().strip()
+        if explicit in PROVIDERS:
+            info = PROVIDERS[explicit]
+            return {
+                "provider": explicit,
+                "model": info.get("default_model", "deepseek-chat"),
+            }
+
+    if sorted_providers:
+        best = sorted_providers[0][0]
+        info = PROVIDERS[best]
+        return {
+            "provider": best,
+            "model": info.get("default_model", "deepseek-chat"),
+        }
+
+    return {"provider": "deepseek", "model": "deepseek-chat"}
 
 
 def list_providers() -> str:

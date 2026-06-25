@@ -26,8 +26,11 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
   "rol": "{role}",
   "silogismo": {{{{
     "premisa_mayor": "Afirmacion tecnica universal (ej: Todo codigo que...)",
+    "premisa_mayor_tipo": "A|E|I|O",
     "premisa_menor": "Afirmacion tecnica particular sobre este codigo",
-    "conclusion": "Veredicto tecnico necesario deducido"
+    "premisa_menor_tipo": "A|E|I|O",
+    "conclusion": "Veredicto tecnico necesario deducido",
+    "conclusion_tipo": "A|E|I|O"
   }}}},
   "principio_no_contradiccion": true,
   "veredicto": "CONDENA|ABSUELVE|RESERVA",
@@ -53,27 +56,40 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
                 user_content += f"\n### {agente}:\n{argumento}\n"
         return [system, HumanMessage(content=user_content)]
 
-    def _code_fingerprint(self, code: str) -> str:
+    def _code_fingerprint(
+        self, code: str, context: Optional[Dict[str, str]] = None
+    ) -> str:
+        ctx_hash = ""
+        if context:
+            ctx_sorted = "|".join(f"{k}:{v[:200]}" for k, v in sorted(context.items()))
+            ctx_hash = hashlib.sha256(ctx_sorted.encode()).hexdigest()[:12]
         return hashlib.sha256(
-            f"{self.role_name}|{code}".encode()
+            f"{self.role_name}|{code}|{ctx_hash}".encode()
         ).hexdigest()[:24]
 
-    def _check_code_cache(self, code: str) -> Optional[AgentOutput]:
+    def _check_code_cache(
+        self, code: str, context: Optional[Dict[str, str]] = None
+    ) -> Optional[AgentOutput]:
         from concilio_salamanca.debate.syllogism_cache import get_syllogism_cache
+
         cache = get_syllogism_cache()
-        fp = self._code_fingerprint(code)
+        fp = self._code_fingerprint(code, context)
         entry = cache.entries.get(f"code:{fp}")
         if entry and hasattr(entry, "conclusion_text"):
             structured = self._parse_response(entry.conclusion_text)
             cached = AgentOutput(
                 raw=entry.conclusion_text,
-                structured=structured if structured and "[Error" not in structured.fundamento else None,
+                structured=structured
+                if structured and "[Error" not in structured.fundamento
+                else None,
                 timestamp=time.time(),
             )
             return cached
         return None
 
-    def _store_code_cache(self, code: str, output: AgentOutput):
+    def _store_code_cache(
+        self, code: str, output: AgentOutput, context: Optional[Dict[str, str]] = None
+    ):
         from concilio_salamanca.debate.syllogism_cache import (
             get_syllogism_cache,
             CacheEntry,
@@ -83,7 +99,7 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
         )
 
         cache = get_syllogism_cache()
-        fp = self._code_fingerprint(code)
+        fp = self._code_fingerprint(code, context)
 
         pattern = SyllogismPattern(
             major_type=PropositionType.A,
@@ -125,11 +141,56 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
 
         cache.save()
 
-    def reason(
-        self, code: str, context: Optional[Dict[str, str]] = None,
+    async def reason_async(
+        self,
+        code: str,
+        context: Optional[Dict[str, str]] = None,
         max_tokens: int = 0,
     ) -> AgentOutput:
-        cached = self._check_code_cache(code)
+        cached = self._check_code_cache(code, context)
+        if cached:
+            return cached
+
+        messages = self._build_messages(code, context)
+
+        if max_tokens > 0:
+            budget_instruction = (
+                f"RESTRICCION DE TOKENS: Tu respuesta no debe exceder aproximadamente "
+                f"{max_tokens} tokens (~{max_tokens // 4} palabras). "
+                f"Se conciso. Elimina toda palabra innecesaria. Ve directo a la conclusion."
+            )
+            messages[0] = SystemMessage(
+                content=messages[0].content + "\n\n" + budget_instruction
+            )
+
+        ts = time.time()
+
+        # Inject MCP Tools via bind_tools if supported
+        from concilio_salamanca.debate.mcp_client import HAS_MCP
+
+        llm = self.model
+        if HAS_MCP:
+            # Here we would bind actual LangChain wrappers of MCP tools
+            pass
+
+        response = await llm.ainvoke(messages)
+        raw = response.content
+        structured = self._parse_response(raw)
+        output = AgentOutput(raw=raw, structured=structured, timestamp=ts)
+
+        try:
+            self._store_code_cache(code, output, context)
+        except Exception:
+            pass
+        return output
+
+    def reason(
+        self,
+        code: str,
+        context: Optional[Dict[str, str]] = None,
+        max_tokens: int = 0,
+    ) -> AgentOutput:
+        cached = self._check_code_cache(code, context)
         if cached:
             return cached
 
@@ -152,7 +213,7 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
         output = AgentOutput(raw=raw, structured=structured, timestamp=ts)
 
         try:
-            self._store_code_cache(code, output)
+            self._store_code_cache(code, output, context)
         except Exception:
             pass
         return output
@@ -160,6 +221,7 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
     @staticmethod
     def _extract_json(raw: str) -> str:
         import re
+
         raw_stripped = raw.strip()
         if raw_stripped.startswith("{") and raw_stripped.endswith("}"):
             return raw_stripped
@@ -171,7 +233,7 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
                 parts = raw.split(marker)
                 if len(parts) > 1:
                     inner = parts[1].split("```")[0]
-                    inner_match = re.search(r'\{.*\}', inner, re.DOTALL)
+                    inner_match = re.search(r"\{.*\}", inner, re.DOTALL)
                     if inner_match:
                         return inner_match.group(0)
         return raw
@@ -184,13 +246,16 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
                 agente=data.get("agente", self.role_name),
                 rol=data.get("rol", self.role_name),
                 silogismo=Silogismo(**data["silogismo"]),
-                principio_no_contradiccion=data.get(
-                    "principio_no_contradiccion", True
-                ),
+                principio_no_contradiccion=data.get("principio_no_contradiccion", True),
                 veredicto=Veredicto(data.get("veredicto", "RESERVA")),
                 fundamento=data.get("fundamento", ""),
             )
         except (json.JSONDecodeError, KeyError, TypeError) as e:
+            import sys
+
+            sys.stderr.write(
+                f"\n[ADVERTENCIA] El agente '{self.role_name}' falló al parsear la respuesta JSON del LLM. Error: {str(e)[:100]}\n"
+            )
             return AgentVeredict(
                 agente=self.role_name,
                 rol=self.role_name,
@@ -205,5 +270,25 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
             )
 
     @abstractmethod
+    def act(
+        self, code: str, context: Optional[Dict[str, str]] = None
+    ) -> AgentOutput: ...
+
+
+class AgentFromPrompt(AgenteBase):
+    def __init__(self, role_name: str, system_prompt: str, model: BaseChatModel):
+        self.role_name = role_name
+        self.system_prompt = system_prompt
+        super().__init__(model)
+
     def act(self, code: str, context: Optional[Dict[str, str]] = None) -> AgentOutput:
-        ...
+        return self.reason(code, context)
+
+    async def act_async(
+        self, code: str, context: Optional[Dict[str, str]] = None
+    ) -> AgentOutput:
+        return await self.reason_async(code, context)
+
+    def attack(self, code: str) -> str:
+        output = self.reason(code)
+        return output.raw

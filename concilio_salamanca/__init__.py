@@ -1,9 +1,11 @@
 """
-Concilio de Salamanca - Sistema de Auditoría de Código por Meta Dialéctica Escolástica (MDE)
+Concilio de Salamanca — MDE Skill de Auditoria de Codigo.
 
-Un tribunal de agentes de IA que auditan código mediante silogismos ontológicos,
-validados por el Principio de No Contradicción y la doctrina de la Rerum Novarum.
+Sistema de 38 agentes IA especializados que debaten usando logica
+aristotelico-tomista y emiten un veredicto estructurado.
 """
+
+from __future__ import annotations
 
 from concilio_salamanca.schemas import (
     AgentOutput,
@@ -14,6 +16,7 @@ from concilio_salamanca.schemas import (
     PnCValidation,
     Silogismo,
     Veredicto,
+    VotingTable,
 )
 
 __version__ = "1.0.0"
@@ -26,4 +29,5 @@ __all__ = [
     "PnCValidation",
     "Silogismo",
     "Veredicto",
+    "VotingTable",
 ]

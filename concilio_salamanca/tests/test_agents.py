@@ -9,7 +9,6 @@ from concilio_salamanca.agents import (
     AGENT_GROUPS,
     AGENT_REGISTRY,
     get_agent_cls,
-    get_agent_keys,
     get_agent_label,
     list_agents,
     resolve_agents,
@@ -43,7 +42,12 @@ from concilio_salamanca.agents.magister_determinans import MagisterDeterminans
 from concilio_salamanca.agents.promotor_fidei import PromotorFidei
 from concilio_salamanca.agents.richard_stallman import RichardStallman
 from concilio_salamanca.agents.steve_wozniak import SteveWozniak
-from concilio_salamanca.debate.graph import create_salamanca_graph
+from concilio_salamanca.agents.redteam import RedTeamCoordinator
+from concilio_salamanca.agents.pentest import PentestAuditor
+from concilio_salamanca.agents.abuser import AbuserStoryGenerator
+from concilio_salamanca.agents.causas import AnalistaCausal
+from concilio_salamanca.agents.leibniz import OptimistaLeibniziano
+from concilio_salamanca.agents.nietzsche import VitalistaNietzscheano
 from concilio_salamanca.debate.orchestrator import DebateConfig, DebateOrchestrator
 from concilio_salamanca.debate.validator_pnc import ValidadorPNC
 from concilio_salamanca.license_generator import LicenseGenerator
@@ -261,17 +265,43 @@ def test_telemetry():
     _test_agent(Telemetry)
 
 
+def test_red_team_coordinator():
+    _test_agent(RedTeamCoordinator)
+
+
+def test_pentest_auditor():
+    _test_agent(PentestAuditor)
+
+
+def test_abuser_story_generator():
+    _test_agent(AbuserStoryGenerator)
+
+
+def test_analista_causal():
+    _test_agent(AnalistaCausal)
+
+
+def test_optimista_leibniziano():
+    _test_agent(OptimistaLeibniziano)
+
+
+def test_vitalista_nietzscheano():
+    _test_agent(VitalistaNietzscheano)
+
+
 def test_magister_parse():
     model = _mock_model()
     magister = MagisterDeterminans(model)
-    raw = json.dumps({
-        "quaestio": "Es seguro?",
-        "videtur": "Parece seguro",
-        "sed_contra": "No lo es",
-        "respondeo": "Condenado",
-        "determinatio_codici": "Corregir X",
-        "veredicto_final": "CONDENA",
-    })
+    raw = json.dumps(
+        {
+            "quaestio": "Es seguro?",
+            "videtur": "Parece seguro",
+            "sed_contra": "No lo es",
+            "respondeo": "Condenado",
+            "determinatio_codici": "Corregir X",
+            "veredicto_final": "CONDENA",
+        }
+    )
     d = magister.parse_determinatio(raw)
     assert d.veredicto_final == Veredicto.CONDENA
 
@@ -279,17 +309,21 @@ def test_magister_parse():
 def test_pnc_validator_parse():
     model = _mock_model()
     validator = ValidadorPNC(model)
-    raw = json.dumps({
-        "hay_contradicciones": True,
-        "contradicciones": [{
-            "agente_a": "Promotor Fidei",
-            "agente_b": "Defensor Causae Finalis",
-            "proposicion_a": "El codigo es inseguro",
-            "proposicion_b": "El codigo es seguro",
-            "descripcion": "Contradiccion directa",
-        }],
-        "resumen": "Existe una contradiccion fundamental",
-    })
+    raw = json.dumps(
+        {
+            "hay_contradicciones": True,
+            "contradicciones": [
+                {
+                    "agente_a": "Promotor Fidei",
+                    "agente_b": "Defensor Causae Finalis",
+                    "proposicion_a": "El codigo es inseguro",
+                    "proposicion_b": "El codigo es seguro",
+                    "descripcion": "Contradiccion directa",
+                }
+            ],
+            "resumen": "Existe una contradiccion fundamental",
+        }
+    )
     result = validator._parse(raw)
     assert result.hay_contradicciones
     assert len(result.contradicciones) == 1
@@ -297,10 +331,25 @@ def test_pnc_validator_parse():
 
 # --- Agent registry tests ---
 def test_agent_registry_has_all_agents():
-    assert len(AGENT_REGISTRY) == 28
+    assert len(AGENT_REGISTRY) == 38
     expected_keys = [
-        "promotor", "defensor", "doctor", "larouche", "leon_xiii",
-        "linus", "wozniak", "stallman", "stroustrup", "thompson", "korotkevich",
+        "promotor",
+        "defensor",
+        "doctor",
+        "larouche",
+        "leon_xiii",
+        "linus",
+        "wozniak",
+        "stallman",
+        "stroustrup",
+        "thompson",
+        "korotkevich",
+        "redteam",
+        "pentest",
+        "abuser",
+        "causas",
+        "leibniz",
+        "nietzsche",
     ]
     for k in expected_keys:
         assert k in AGENT_REGISTRY
@@ -330,7 +379,7 @@ def test_resolve_agents_mixed():
 
 def test_resolve_agents_todos():
     result = resolve_agents(["todos"])
-    assert len(result) == 28
+    assert len(result) == 38
 
 
 def test_resolve_agents_no_duplicates():
@@ -362,6 +411,9 @@ def test_agent_groups_exist():
     assert "seguridad_completa" in AGENT_GROUPS
     assert "ia_produccion" in AGENT_GROUPS
     assert "embebidos" in AGENT_GROUPS
+    assert "clean_code" in AGENT_GROUPS
+    assert "proceso" in AGENT_GROUPS
+    assert "delineatio" in AGENT_GROUPS
 
 
 # --- Orchestrator with custom agents ---
@@ -378,6 +430,42 @@ def test_orchestrator_with_custom_agents():
     assert result["determinatio"] is not None
 
 
+def test_orchestrator_parallel():
+    model = _mock_model()
+    config = DebateConfig(
+        max_rounds=1,
+        include_pnc_validation=True,
+        agents=["linus", "stallman"],
+        parallel=True,
+    )
+    orchestrator = DebateOrchestrator(model, config)
+    assert len(orchestrator.agent_keys) == 2
+    result = orchestrator.run_debate("print('hello')")
+    assert result["determinatio"] is not None
+    assert result["pnc_validation"] is not None
+
+
+def test_parallel_graph():
+    from concilio_salamanca.debate.send_graph import create_salamanca_graph_parallel
+
+    model = _mock_model()
+    graph = create_salamanca_graph_parallel(
+        model=model,
+        max_rounds=1,
+        enable_pnc=True,
+        agents=["linus", "stallman"],
+    )
+    state = {
+        "code": "print('hello')",
+        "language": "python",
+        "static_analysis": "No static issues",
+    }
+    result = graph.invoke(state)
+    assert result is not None
+    assert "determinatio" in result
+    assert result["determinatio"] is not None
+
+
 # --- License tests ---
 def test_license_generator():
     gen = LicenseGenerator(
@@ -388,15 +476,15 @@ def test_license_generator():
     license_text = gen.generate_license("MX")
     assert "Test Dev" in license_text
     assert "Test Project" in license_text
-    assert "LPRN" in license_text
-    assert "Mandamiento" in license_text
-    assert "20,000" in license_text
-    assert "Auto-Favorito" in license_text
+    assert "RERUM NOVARUM STATUTO" in license_text
+    assert "Salario" in license_text
+    assert "Bula" in license_text
     assert "github.com/test/repo" in license_text
-    assert "Star" in license_text
+    assert "Disney" in license_text
     assert "Big Mac" in license_text
-    assert "Geo-Arbitraje" in license_text
+    assert "Sostenibilidad" in license_text
     assert "BME" in license_text
+    assert "Oligarca" in license_text
 
 
 def test_license_free_for_poor_devs():
@@ -478,7 +566,9 @@ def test_syllogism_cache():
     fp = pattern.fingerprint()
     assert len(fp) == 16
 
-    import tempfile, os
+    import tempfile
+    import os
+
     tmp = os.path.join(tempfile.gettempdir(), "test_syl_cache.json")
     cache = SyllogismCache(cache_path=tmp)
     cached = cache.lookup(pattern)
@@ -527,7 +617,10 @@ def test_syllogism_trinivel():
 
     assert "Todo" in unified.scholastic.premise_major_scheme
     assert "SUBSET" in unified.set_theory.conclusion_equation
-    assert "forall" in unified.predicate_logic.major_formula or "todo" in unified.predicate_logic.major_formula.lower()
+    assert (
+        "forall" in unified.predicate_logic.major_formula
+        or "todo" in unified.predicate_logic.major_formula.lower()
+    )
 
     assert len(unified.predicate_logic.derivation_steps) == 6
 
@@ -547,7 +640,9 @@ def test_syllogism_trinivel():
 
 def test_syllogism_celarent():
     from concilio_salamanca.debate.syllogism_cache import (
-        SyllogismReducer, SyllogismPattern, PropositionType,
+        SyllogismReducer,
+        SyllogismPattern,
+        PropositionType,
     )
 
     pattern = SyllogismPattern(
@@ -572,28 +667,42 @@ def test_syllogism_celarent():
 
 
 def test_cross_paradigm_equivalence():
-    from concilio_salamanca.debate.syllogism_cache import SyllogismReducer, SyllogismPattern, PropositionType
+    from concilio_salamanca.debate.syllogism_cache import (
+        SyllogismReducer,
+        SyllogismPattern,
+        PropositionType,
+    )
 
-    p1 = SyllogismPattern(PropositionType.A, PropositionType.A, PropositionType.A, 1,
-                          "X", "Y", "Z")
+    p1 = SyllogismPattern(
+        PropositionType.A, PropositionType.A, PropositionType.A, 1, "X", "Y", "Z"
+    )
 
     uf1 = SyllogismReducer.unified_fingerprint(p1)
     assert len(uf1) == 16
 
-    assert SyllogismReducer._deduce_figure(PropositionType.A, PropositionType.A, PropositionType.A) == 1
+    assert (
+        SyllogismReducer._deduce_figure(
+            PropositionType.A, PropositionType.A, PropositionType.A
+        )
+        == 1
+    )
 
     eq = SyllogismReducer.find_equivalents(p1)
     assert "Barbara (AAA-1)" in eq
 
-    p_i = SyllogismPattern(PropositionType.A, PropositionType.I, PropositionType.I, 1,
-                           "A", "B", "C")
+    p_i = SyllogismPattern(
+        PropositionType.A, PropositionType.I, PropositionType.I, 1, "A", "B", "C"
+    )
     eq_i = SyllogismReducer.find_equivalents(p_i)
     assert len(eq_i) >= 4
 
 
 def test_anti_patrones():
     from concilio_salamanca.reference.anti_patrones import (
-        ANTI_PATRONES, buscar_anti_patrones, listar_anti_patrones, resumen_anti_patrones,
+        ANTI_PATRONES,
+        buscar_anti_patrones,
+        listar_anti_patrones,
+        resumen_anti_patrones,
     )
 
     assert len(ANTI_PATRONES) >= 15
@@ -613,7 +722,10 @@ def test_anti_patrones():
 
 def test_componentes():
     from concilio_salamanca.reference.componentes import (
-        COMPONENTES, buscar_componente, checklist_to_markdown, resumen_componentes,
+        COMPONENTES,
+        buscar_componente,
+        checklist_to_markdown,
+        resumen_componentes,
     )
 
     assert len(COMPONENTES) >= 4
@@ -632,7 +744,7 @@ def test_componentes():
 
 def test_determinatio_template():
     from concilio_salamanca.reference.determinatio_template import (
-        format_determinatio, format_agent_report,
+        format_determinatio,
     )
 
     ejecutivo = format_determinatio(
@@ -667,7 +779,9 @@ def test_determinatio_template():
 
 def test_providers():
     from concilio_salamanca.debate.providers import (
-        PROVIDERS, get_provider_info, list_providers, resolve_api_key,
+        PROVIDERS,
+        get_provider_info,
+        list_providers,
     )
 
     assert "openai" in PROVIDERS
@@ -693,7 +807,11 @@ def test_providers():
 
 
 def test_static_analysis():
-    from concilio_salamanca.debate.static_analysis import analyze_code, format_analysis, auto_select_agents
+    from concilio_salamanca.debate.static_analysis import (
+        analyze_code,
+        format_analysis,
+        auto_select_agents,
+    )
 
     py_code = """def foo(x: int) -> int:
     if x > 0:
@@ -702,7 +820,7 @@ def test_static_analysis():
 
     metrics = analyze_code(py_code, "test.py")
     assert metrics["extension"] == ".py"
-    assert metrics["funciones"] >= 1
+    assert metrics.get("ast_funciones", metrics.get("funciones_regex", 0)) >= 1
     assert metrics["complejidad_ciclomatica_aprox"] >= 1
 
     formatted = format_analysis(metrics)
@@ -714,14 +832,21 @@ def test_static_analysis():
 
 
 def test_precedents():
-    from concilio_salamanca.debate.precedents import PrecedentEngine, Precedent
-    from concilio_salamanca.debate.syllogism_cache import SyllogismReducer, SyllogismPattern, PropositionType
-    import tempfile, os
+    from concilio_salamanca.debate.precedents import PrecedentEngine
+    from concilio_salamanca.debate.syllogism_cache import (
+        SyllogismReducer,
+        SyllogismPattern,
+        PropositionType,
+    )
+    import tempfile
+    import os
 
     tmp = os.path.join(tempfile.gettempdir(), "test_precedents.json")
     engine = PrecedentEngine(path=tmp)
 
-    pattern = SyllogismPattern(PropositionType.A, PropositionType.A, PropositionType.A, 1, "X", "Y", "Z")
+    pattern = SyllogismPattern(
+        PropositionType.A, PropositionType.A, PropositionType.A, 1, "X", "Y", "Z"
+    )
     unified = SyllogismReducer.reduce_all(pattern)
     engine.add(unified, "CONDENA", "Test", "def foo(): pass")
 

@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 import json
-import time
-from typing import Dict, List, Optional
+from typing import Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.language_models import BaseChatModel
 
 from concilio_salamanca.prompts.system_prompts import MAGISTER_DETERMINANS
 from concilio_salamanca.schemas import (
-    AgentOutput,
     DebateState,
     Determinatio,
     PnCValidation,
@@ -35,21 +33,22 @@ class MagisterDeterminans:
         arguments_text = ""
 
         if history:
-            last_round = history[-1].get("arguments", {})
-            for agent_name, raw_content in last_round.items():
-                content = raw_content if isinstance(raw_content, str) else str(raw_content)
-                arguments_text += f"\n\n===== {agent_name} =====\n{content[:3000]}"
+            # Include ALL rounds so the Magister sees the full debate evolution
+            for round_data in history:
+                round_num = round_data.get("round", "?")
+                for agent_name, raw_content in round_data.get("arguments", {}).items():
+                    content = (
+                        raw_content
+                        if isinstance(raw_content, str)
+                        else str(raw_content)
+                    )
+                    arguments_text += f"\n\n===== {agent_name} (Ronda {round_num}) =====\n{content[:3000]}"
         else:
-            for key in ["promotor", "defensor", "doctor", "larouche", "leon_xiii",
-                         "linus", "wozniak", "stallman", "stroustrup", "thompson",
-                         "korotkevich", "auditor_dl", "seguridad", "mlops", "datos",
-                         "sistemas", "iot", "socrates", "scrum", "sixsigma",
-                         "llull", "bacon", "vitoria", "ratio",
-                         "ponytail", "graphify", "rtk", "telemetry"]:
-                output = state.get(key)
-                if output:
-                    content = output.raw if hasattr(output, "raw") else str(output)
-                    arguments_text += f"\n\n===== {key} =====\n{content[:3000]}"
+            # Fallback: read from dynamic agent_outputs dict
+            agent_outputs = state.get("agent_outputs", {})
+            for agent_name, output in agent_outputs.items():
+                content = output.raw if hasattr(output, "raw") else str(output)
+                arguments_text += f"\n\n===== {agent_name} =====\n{content[:3000]}"
 
         pnc_text = ""
         if pnc_validation:

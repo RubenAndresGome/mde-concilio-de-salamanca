@@ -28,6 +28,16 @@ from concilio_salamanca.prompts.system_prompts import (
     STEVE_WOZNIAK,
     TELEMETRY,
     VITORIA,
+    REDTEAM,
+    PENTEST,
+    ABUSER,
+    CAUSAS,
+    LEIBNIZ,
+    NIETZSCHE,
+    MAGISTER_PROCESSUS_INTEGRI,
+    ARQUIMEDES,
+    CUSTOS_IMPACTI,
+    MAGISTER_DELINEATIONIS,
 )
 
 __all__ = [
@@ -61,4 +71,14 @@ __all__ = [
     "GRAPHIFY",
     "RTK",
     "TELEMETRY",
+    "REDTEAM",
+    "PENTEST",
+    "ABUSER",
+    "CAUSAS",
+    "LEIBNIZ",
+    "NIETZSCHE",
+    "MAGISTER_PROCESSUS_INTEGRI",
+    "ARQUIMEDES",
+    "CUSTOS_IMPACTI",
+    "MAGISTER_DELINEATIONIS",
 ]

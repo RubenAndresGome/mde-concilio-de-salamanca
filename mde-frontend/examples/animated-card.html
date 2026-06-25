@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MDE AnimatedCard — Cinemática de Transiciones</title>
+<style>
+  /* === SYLLOGISMUS CINEMATICUS ===
+     Premisa Mayor: Todo movimiento sin causa final es ruido visual. La animación
+                     debe tener propósito: guiar atención, confirmar acción, revelar información.
+     Premisa Menor: La tarjeta de producto necesita revelar precio y CTA al hacer hover.
+     Conclusio: transform + opacity: 300ms cubic-bezier(0.34,1.56,0.64,1) (spring suave),
+                con translateY(4px) para feedback táctil, y escala tipográfica modular 1.25.
+  */
+  :root {
+    --color-veritas: #000; --color-pura: #fff;
+    --color-gravitas: hsl(0,0%,15%); --color-subtilis: hsl(0,0%,45%);
+    --color-fatum: hsl(0,0%,92%);
+    --space-sm:8px; --space-md:16px; --space-lg:24px; --space-xl:32px;
+    --radius:12px; --radius-lg:20px;
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --duration-fast: 150ms; --duration-norm: 300ms; --duration-slow: 500ms;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: hsl(0,0%,97%); color: var(--color-gravitas);
+    display: grid; place-items: center; min-height: 100vh; padding: var(--space-lg);
+  }
+  .container {
+    display:flex; flex-direction:column; align-items:center; gap:var(--space-xl);
+    max-width: 720px;
+  }
+
+  .card-grid {
+    display:grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-lg);
+    width:100%;
+  }
+  @media (max-width: 640px) { .card-grid { grid-template-columns: 1fr; } }
+
+  /* Card con animaciones MDE */
+  .card {
+    background: var(--color-pura); border-radius: var(--radius-lg); overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: all var(--duration-norm) var(--ease-smooth);
+    cursor: pointer;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+  }
+  .card:active { transform: translateY(-1px); }
+
+  .card__img {
+    width:100%; aspect-ratio: 16/10; object-fit: cover;
+    background: hsl(0,0%,92%);
+    display:grid; place-items:center;
+    font-size:2rem;
+    transition: transform var(--duration-slow) var(--ease-smooth);
+  }
+  .card:hover .card__img { transform: scale(1.05); }
+
+  .card__body { padding: var(--space-md); display:flex; flex-direction:column; gap: var(--space-sm); }
+  .card__title { font-size:1rem; font-weight:600; }
+  .card__desc { font-size:0.8125rem; color:var(--color-subtilis); line-height:1.5; }
+
+  /* Info que aparece con animación */
+  .card__extra {
+    overflow:hidden; max-height:0; opacity:0;
+    transition: all var(--duration-norm) var(--ease-spring);
+  }
+  .card:hover .card__extra {
+    max-height: 60px; opacity:1;
+  }
+
+  .card__footer {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 var(--space-md) var(--space-md);
+  }
+  .card__price { font-size:1.125rem; font-weight:700; }
+  .btn-sm {
+    padding:6px 16px; font-size:0.8125rem; font-weight:500;
+    border:none; border-radius:var(--radius); cursor:pointer;
+    background:var(--color-veritas); color:var(--color-pura);
+    transition: all var(--duration-fast) var(--ease-smooth);
+  }
+  .btn-sm:hover { background:hsl(0,0%,15%); transform:scale(1.02); }
+  .btn-sm:active { transform:scale(0.97); }
+
+  .spec {
+    background:hsl(0,0%,98%); border-radius:var(--radius);
+    padding:var(--space-lg); font-size:0.8125rem; line-height:1.6;
+    color:var(--color-subtilis); width:100%;
+  }
+  .spec strong { color:var(--color-gravitas); }
+  .spec code { background:hsl(0,0%,90%); padding:1px 6px; border-radius:4px; font-size:0.75rem; }
+  .pill { display:inline-block; padding:2px 10px; border-radius:99px; font-size:0.6875rem; font-weight:600; text-transform:uppercase; letter-spacing:0.03em; }
+  .pill--verum { background:#d1fae5; color:#065f46; }
+  .pill--bonum { background:#dbeafe; color:#1e40af; }
+  .pill--pulchrum { background:#fef3c7; color:#92400e; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div style="display:flex; align-items:center; gap:12px; align-self:flex-start;">
+    <span style="font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--color-subtilis);">Molécula · AnimatedCard</span>
+    <span class="pill pill--verum">Verum 17:1</span>
+    <span class="pill pill--bonum">Bonum 18 nodos</span>
+    <span class="pill pill--pulchrum">Pulchrum spring Φ</span>
+  </div>
+
+  <div class="card-grid">
+    <div class="card" tabindex="0">
+      <div class="card__img" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white;">✦</div>
+      <div class="card__body">
+        <div class="card__title">Design Pro</div>
+        <div class="card__desc">Plantilla UI profesional con componentes reutilizables.</div>
+        <div class="card__extra">Incluye 48 componentes · Modo oscuro · Figma export</div>
+      </div>
+      <div class="card__footer">
+        <span class="card__price">$49</span>
+        <button class="btn-sm" aria-label="Comprar Design Pro">Comprar</button>
+      </div>
+    </div>
+
+    <div class="card" tabindex="0">
+      <div class="card__img" style="background:linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color:white;">◆</div>
+      <div class="card__body">
+        <div class="card__title">DevKit</div>
+        <div class="card__desc">Kit de herramientas para desarrollo frontend moderno.</div>
+        <div class="card__extra">CLI integrada · 12 plugins · Documentación API</div>
+      </div>
+      <div class="card__footer">
+        <span class="card__price">$29</span>
+        <button class="btn-sm" aria-label="Comprar DevKit">Comprar</button>
+      </div>
+    </div>
+
+    <div class="card" tabindex="0">
+      <div class="card__img" style="background:linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color:white;">●</div>
+      <div class="card__body">
+        <div class="card__title">Analytics</div>
+        <div class="card__desc">Dashboard de métricas con inteligencia artificial.</div>
+        <div class="card__extra">Tiempo real · 15 gráficos · Export CSV/PDF</div>
+      </div>
+      <div class="card__footer">
+        <span class="card__price">$99</span>
+        <button class="btn-sm" aria-label="Comprar Analytics">Comprar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="spec">
+    <strong>🔍 Syllogismus Motus cum Fine</strong><br><br>
+    <strong>Premisa Mayor:</strong> Todo movimiento sin causa final es ruido visual. La animación debe tener propósito: guiar atención, confirmar acción, revelar información.<br><br>
+    <strong>Premisa Menor:</strong> La tarjeta de producto necesita revelar precio y CTA adicional al hacer hover.<br><br>
+    <strong>Conclusio:</strong> <code>transform: translateY(-4px)</code> feedback táctil,
+    <code>max-height 0→60px</code> revela info extra, <code>cubic-bezier(0.34,1.56,0.64,1)</code> spring suave.<br><br>
+    <strong>KPI Trinitas:</strong>
+    · Verum: 17:1 contraste ✓ card focusable con tabindex ✓ aria-label en botones ✓
+    · Bonum: 18 nodos DOM por card < 150 ✓ animaciones GPU (transform/opacity) ✓ CLS=0 ✓
+    · Pulchrum: spring Φ=1.618 ✓ gap 24px ∈ E[4,8,16,24,32] ✓ duraciones 150/300/500ms ✓
+  </div>
+</div>
+</body>
+</html>

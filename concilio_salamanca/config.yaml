@@ -1,6 +1,6 @@
 # Configuración del Concilio de Salamanca (MDE)
 concilio:
-  # Proveedor LLM: openai, deepseek, anthropic, groq, ollama, opencode
+  # Proveedor LLM: openai, deepseek, anthropic, groq, ollama, opencode, openrouter
   provider: "openai"
   # Modelo LLM principal
   model: "gpt-4o"
@@ -29,6 +29,33 @@ output:
   save_dir: "./veredictos"
   # Formato de salida: json, text, markdown
   format: "json"
+
+# Configuración de pesos multi-modelo (Compatibilidad Muchos LLM)
+# Define qué modelos se usan y con qué prioridad.
+# El modelo con peso más alto será el default.
+# Los pesos son relativos; puedes usar 0 para deshabilitar un modelo.
+# Usa "auto" en roles para que ModelRanker decida calidad-precio-disponibilidad.
+model_weights:
+  ollama: 10
+  meta-llama: 2
+  deepseek: 1
+  qwen: 1
+  minimax: 1
+  bytedance-seed: 1
+  openai: 0
+  anthropic: 0
+
+# Roles: ejecutor (obreros baratos, tasks simples) y
+#        director_strategy (magister deluxe, razonamiento profundo)
+# Usa "auto" para seleccion automatica via ModelRanker
+roles:
+  ejecutor: "auto"
+  director_strategy: "auto"
+
+# Límite de costo por debate (opcional, en USD)
+budget:
+  max_per_debate_usd: 0.50
+  warn_at_usd: 0.10
 
 licencia:
   developer_name: ""

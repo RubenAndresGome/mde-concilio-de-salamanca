@@ -20,8 +20,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -39,6 +38,7 @@ class SetRelation(Enum):
     INTERSECT_EMPTY = "intersect_empty"
     INTERSECT_NONEMPTY = "intersect_nonempty"
     NOT_SUBSET = "not_subset"
+
 
 @dataclass
 class SyllogismPattern:
@@ -74,7 +74,13 @@ class SyllogismPattern:
 
     def normalized_key(self) -> str:
         raw = f"{self.major_type.value}{self.minor_type.value}{self.conclusion_type.value}-{self.figure}"
-        terms = sorted([self.subject.lower().strip(), self.predicate.lower().strip(), self.middle.lower().strip()])
+        terms = sorted(
+            [
+                self.subject.lower().strip(),
+                self.predicate.lower().strip(),
+                self.middle.lower().strip(),
+            ]
+        )
         terms_str = "|".join(terms)
         return f"{raw}|{hashlib.md5(terms_str.encode()).hexdigest()[:10]}"
 
@@ -102,6 +108,7 @@ class ScholasticReduction:
     vocal_pattern: str
     source: str = "Aristoteles, Primeros Analiticos / Pedro Hispano, Summulae Logicales"
 
+
 @dataclass
 class SetTheoryReduction:
     mode_name: str
@@ -113,6 +120,7 @@ class SetTheoryReduction:
     venn_region: str
     source: str = "George Boole, The Laws of Thought (1854)"
 
+
 @dataclass
 class PredicateLogicReduction:
     mode_name: str
@@ -122,6 +130,7 @@ class PredicateLogicReduction:
     derivation_steps: List[str]
     quantifier_structure: str
     source: str = "Gottlob Frege, Begriffsschrift (1879) / Russell-Whitehead, Principia Mathematica"
+
 
 @dataclass
 class UnifiedSyllogism:
@@ -137,28 +146,50 @@ class UnifiedSyllogism:
 
 class SyllogismReducer:
     MODE_MAP = {
-        ("A","A","A",1): "Barbara",  ("E","A","E",1): "Celarent",
-        ("A","I","I",1): "Darii",     ("E","I","O",1): "Ferio",
-        ("A","E","E",2): "Camestres", ("A","O","O",2): "Baroco",
-        ("E","A","O",2): "Cesare",    ("E","I","O",2): "Festino",
-        ("A","A","I",3): "Darapti",   ("E","A","O",3): "Felapton",
-        ("I","A","I",3): "Disamis",   ("A","I","I",3): "Datisi",
-        ("O","A","O",3): "Bocardo",   ("E","I","O",3): "Ferison",
-        ("A","A","I",4): "Bamalip",   ("A","E","E",4): "Camenes",
-        ("I","A","I",4): "Dimatis",   ("E","A","O",4): "Fesapo",
-        ("E","I","O",4): "Fresison",
+        ("A", "A", "A", 1): "Barbara",
+        ("E", "A", "E", 1): "Celarent",
+        ("A", "I", "I", 1): "Darii",
+        ("E", "I", "O", 1): "Ferio",
+        ("A", "E", "E", 2): "Camestres",
+        ("A", "O", "O", 2): "Baroco",
+        ("E", "A", "O", 2): "Cesare",
+        ("E", "I", "O", 2): "Festino",
+        ("A", "A", "I", 3): "Darapti",
+        ("E", "A", "O", 3): "Felapton",
+        ("I", "A", "I", 3): "Disamis",
+        ("A", "I", "I", 3): "Datisi",
+        ("O", "A", "O", 3): "Bocardo",
+        ("E", "I", "O", 3): "Ferison",
+        ("A", "A", "I", 4): "Bamalip",
+        ("A", "E", "E", 4): "Camenes",
+        ("I", "A", "I", 4): "Dimatis",
+        ("E", "A", "O", 4): "Fesapo",
+        ("E", "I", "O", 4): "Fresison",
     }
 
     REDUCTION_RULES = {
         1: {},
-        2: {"Cesare": ["s (EAE->EAE-1 Celarent)"], "Camestres": ["s (AEE->EAE-1)", "m (swap premises)"],
-            "Festino": ["s (EIO->EIO-1 Ferio)"], "Baroco": ["d (AOO, reductio ad absurdum)"]},
-        3: {"Darapti": ["p (AAI, per accidens from Barbara)"], "Felapton": ["p (EAO, per accidens from Celarent)"],
-            "Disamis": ["s,m,s (IAI->AII-1 Darii)"], "Datisi": ["s (AII->AII-1 Darii)"],
-            "Bocardo": ["d (OAO, reductio ad absurdum)"], "Ferison": ["s (EIO->EIO-1 Ferio)"]},
-        4: {"Bamalip": ["p,m,s (AAI, per accidens from Barbara)"], "Camenes": ["s,m,s (AEE->EAE-1 Celarent)"],
-            "Dimatis": ["s,m,s (IAI->AII-1 Darii)"], "Fesapo": ["s,p (EAO, per accidens from Celarent)"],
-            "Fresison": ["s (EIO->EIO-1 Ferio)"]},
+        2: {
+            "Cesare": ["s (EAE->EAE-1 Celarent)"],
+            "Camestres": ["s (AEE->EAE-1)", "m (swap premises)"],
+            "Festino": ["s (EIO->EIO-1 Ferio)"],
+            "Baroco": ["d (AOO, reductio ad absurdum)"],
+        },
+        3: {
+            "Darapti": ["p (AAI, per accidens from Barbara)"],
+            "Felapton": ["p (EAO, per accidens from Celarent)"],
+            "Disamis": ["s,m,s (IAI->AII-1 Darii)"],
+            "Datisi": ["s (AII->AII-1 Darii)"],
+            "Bocardo": ["d (OAO, reductio ad absurdum)"],
+            "Ferison": ["s (EIO->EIO-1 Ferio)"],
+        },
+        4: {
+            "Bamalip": ["p,m,s (AAI, per accidens from Barbara)"],
+            "Camenes": ["s,m,s (AEE->EAE-1 Celarent)"],
+            "Dimatis": ["s,m,s (IAI->AII-1 Darii)"],
+            "Fesapo": ["s,p (EAO, per accidens from Celarent)"],
+            "Fresison": ["s (EIO->EIO-1 Ferio)"],
+        },
     }
 
     CONSONANT_MEANING = {
@@ -170,7 +201,7 @@ class SyllogismReducer:
     }
 
     SET_THEORY_TEMPLATES = {
-        ("A","A","A",1): {  # Barbara
+        ("A", "A", "A", 1): {  # Barbara
             "major_eq": "M INTERSECT P_complement = EMPTY",
             "minor_eq": "S INTERSECT M_complement = EMPTY",
             "conc_eq": "S INTERSECT P_complement = EMPTY (S SUBSET P)",
@@ -178,7 +209,7 @@ class SyllogismReducer:
             "boolean": "s(1-m) = 0, m(1-p) = 0 => s(1-p) = 0",
             "venn": "Region S outside P = shaded (empty)",
         },
-        ("E","A","E",1): {  # Celarent
+        ("E", "A", "E", 1): {  # Celarent
             "major_eq": "M INTERSECT P = EMPTY",
             "minor_eq": "S SUBSET M",
             "conc_eq": "S INTERSECT P = EMPTY",
@@ -186,7 +217,7 @@ class SyllogismReducer:
             "boolean": "mp = 0, s(1-m) = 0 => sp = 0",
             "venn": "Region S intersect P = shaded (empty)",
         },
-        ("A","I","I",1): {  # Darii
+        ("A", "I", "I", 1): {  # Darii
             "major_eq": "M SUBSET P",
             "minor_eq": "S INTERSECT M != EMPTY",
             "conc_eq": "S INTERSECT P != EMPTY",
@@ -194,7 +225,7 @@ class SyllogismReducer:
             "boolean": "m(1-p) = 0, sm != 0 => sp != 0",
             "venn": "Region S intersect P = exists (non-empty)",
         },
-        ("E","I","O",1): {  # Ferio
+        ("E", "I", "O", 1): {  # Ferio
             "major_eq": "M INTERSECT P = EMPTY",
             "minor_eq": "S INTERSECT M != EMPTY",
             "conc_eq": "S INTERSECT P_complement != EMPTY (Some S not P)",
@@ -205,7 +236,7 @@ class SyllogismReducer:
     }
 
     PREDICATE_TEMPLATES = {
-        ("A","A","A",1): {
+        ("A", "A", "A", 1): {
             "major": "forall x. M(x) -> P(x)",
             "minor": "forall x. S(x) -> M(x)",
             "conclusion": "forall x. S(x) -> P(x)",
@@ -219,7 +250,7 @@ class SyllogismReducer:
             ],
             "quantifier": "universal-universal",
         },
-        ("E","A","E",1): {
+        ("E", "A", "E", 1): {
             "major": "forall x. M(x) -> not P(x)",
             "minor": "forall x. S(x) -> M(x)",
             "conclusion": "forall x. S(x) -> not P(x)",
@@ -233,7 +264,7 @@ class SyllogismReducer:
             ],
             "quantifier": "universal-negative",
         },
-        ("A","I","I",1): {
+        ("A", "I", "I", 1): {
             "major": "forall x. M(x) -> P(x)",
             "minor": "exists x. S(x) and M(x)",
             "conclusion": "exists x. S(x) and P(x)",
@@ -250,7 +281,7 @@ class SyllogismReducer:
             ],
             "quantifier": "universal-existential",
         },
-        ("E","I","O",1): {
+        ("E", "I", "O", 1): {
             "major": "forall x. M(x) -> not P(x)",
             "minor": "exists x. S(x) and M(x)",
             "conclusion": "exists x. S(x) and not P(x)",
@@ -270,25 +301,46 @@ class SyllogismReducer:
     }
 
     @classmethod
-    def get_templates_for(cls, major: PropositionType, minor: PropositionType,
-                          conc: PropositionType, figure: int):
+    def get_templates_for(
+        cls,
+        major: PropositionType,
+        minor: PropositionType,
+        conc: PropositionType,
+        figure: int,
+    ):
         key = (major.value, minor.value, conc.value, figure)
         mode = cls.MODE_MAP.get(key, "Desconocido")
-        st = cls.SET_THEORY_TEMPLATES.get(key, {
-            "major_eq": f"{major.value}: generico", "minor_eq": f"{minor.value}: generico",
-            "conc_eq": f"{conc.value}: generico", "chain": "", "boolean": "", "venn": "",
-        })
-        plt = cls.PREDICATE_TEMPLATES.get(key, {
-            "major": f"Generico mayor ({major.value})", "minor": f"Generico menor ({minor.value})",
-            "conclusion": f"Generico conclusion ({conc.value})",
-            "steps": [], "quantifier": "generico",
-        })
+        st = cls.SET_THEORY_TEMPLATES.get(
+            key,
+            {
+                "major_eq": f"{major.value}: generico",
+                "minor_eq": f"{minor.value}: generico",
+                "conc_eq": f"{conc.value}: generico",
+                "chain": "",
+                "boolean": "",
+                "venn": "",
+            },
+        )
+        plt = cls.PREDICATE_TEMPLATES.get(
+            key,
+            {
+                "major": f"Generico mayor ({major.value})",
+                "minor": f"Generico menor ({minor.value})",
+                "conclusion": f"Generico conclusion ({conc.value})",
+                "steps": [],
+                "quantifier": "generico",
+            },
+        )
         return mode, st, plt
 
     @classmethod
     def reduce_scholastic(cls, pattern: SyllogismPattern) -> ScholasticReduction:
-        key = (pattern.major_type.value, pattern.minor_type.value,
-               pattern.conclusion_type.value, pattern.figure)
+        key = (
+            pattern.major_type.value,
+            pattern.minor_type.value,
+            pattern.conclusion_type.value,
+            pattern.figure,
+        )
         mode = cls.MODE_MAP.get(key, f"Desconocido-{pattern.figure}")
         rules = cls.REDUCTION_RULES.get(pattern.figure, {}).get(mode, [])
 
@@ -306,25 +358,38 @@ class SyllogismReducer:
             mnemotechnic=f"{pattern.major_type.value}{pattern.minor_type.value}{pattern.conclusion_type.value}-{pattern.figure}",
             figure=pattern.figure,
             reduction_rules=rules,
-            premise_major_scheme=prop_scheme(pattern.major_type, pattern.middle, pattern.predicate),
-            premise_minor_scheme=prop_scheme(pattern.minor_type, pattern.subject, pattern.middle),
-            conclusion_scheme=prop_scheme(pattern.conclusion_type, pattern.subject, pattern.predicate),
+            premise_major_scheme=prop_scheme(
+                pattern.major_type, pattern.middle, pattern.predicate
+            ),
+            premise_minor_scheme=prop_scheme(
+                pattern.minor_type, pattern.subject, pattern.middle
+            ),
+            conclusion_scheme=prop_scheme(
+                pattern.conclusion_type, pattern.subject, pattern.predicate
+            ),
             vocal_pattern=f"{pattern.major_type.value}{pattern.minor_type.value}{pattern.conclusion_type.value}",
         )
 
     @classmethod
     def reduce_set_theory(cls, pattern: SyllogismPattern) -> SetTheoryReduction:
-        key = (pattern.major_type.value, pattern.minor_type.value,
-               pattern.conclusion_type.value, pattern.figure)
+        key = (
+            pattern.major_type.value,
+            pattern.minor_type.value,
+            pattern.conclusion_type.value,
+            pattern.figure,
+        )
         mode = cls.MODE_MAP.get(key, "Desconocido")
-        st = cls.SET_THEORY_TEMPLATES.get(key, {
-            "major_eq": f"{pattern.middle} ? {pattern.predicate}",
-            "minor_eq": f"{pattern.subject} ? {pattern.middle}",
-            "conc_eq": f"{pattern.subject} ? {pattern.predicate}",
-            "chain": f"{pattern.subject} -> {pattern.middle} -> {pattern.predicate}",
-            "boolean": "gen",
-            "venn": "gen",
-        })
+        st = cls.SET_THEORY_TEMPLATES.get(
+            key,
+            {
+                "major_eq": f"{pattern.middle} ? {pattern.predicate}",
+                "minor_eq": f"{pattern.subject} ? {pattern.middle}",
+                "conc_eq": f"{pattern.subject} ? {pattern.predicate}",
+                "chain": f"{pattern.subject} -> {pattern.middle} -> {pattern.predicate}",
+                "boolean": "gen",
+                "venn": "gen",
+            },
+        )
 
         return SetTheoryReduction(
             mode_name=mode,
@@ -337,16 +402,26 @@ class SyllogismReducer:
         )
 
     @classmethod
-    def reduce_predicate_logic(cls, pattern: SyllogismPattern) -> PredicateLogicReduction:
-        key = (pattern.major_type.value, pattern.minor_type.value,
-               pattern.conclusion_type.value, pattern.figure)
+    def reduce_predicate_logic(
+        cls, pattern: SyllogismPattern
+    ) -> PredicateLogicReduction:
+        key = (
+            pattern.major_type.value,
+            pattern.minor_type.value,
+            pattern.conclusion_type.value,
+            pattern.figure,
+        )
         mode = cls.MODE_MAP.get(key, "Desconocido")
-        pt = cls.PREDICATE_TEMPLATES.get(key, {
-            "major": f"{pattern.major_type.value}({pattern.middle},{pattern.predicate})",
-            "minor": f"{pattern.minor_type.value}({pattern.subject},{pattern.middle})",
-            "conclusion": f"{pattern.conclusion_type.value}({pattern.subject},{pattern.predicate})",
-            "steps": [], "quantifier": "gen",
-        })
+        pt = cls.PREDICATE_TEMPLATES.get(
+            key,
+            {
+                "major": f"{pattern.major_type.value}({pattern.middle},{pattern.predicate})",
+                "minor": f"{pattern.minor_type.value}({pattern.subject},{pattern.middle})",
+                "conclusion": f"{pattern.conclusion_type.value}({pattern.subject},{pattern.predicate})",
+                "steps": [],
+                "quantifier": "gen",
+            },
+        )
 
         return PredicateLogicReduction(
             mode_name=mode,
@@ -380,12 +455,16 @@ class SyllogismReducer:
 
     @classmethod
     def find_equivalents(cls, unified_or_pattern) -> List[str]:
-        if hasattr(unified_or_pattern, 'conclusion_type'):
+        if hasattr(unified_or_pattern, "conclusion_type"):
             pattern = unified_or_pattern
             target = (pattern.conclusion_type.value, pattern.subject, pattern.predicate)
         else:
             unified = unified_or_pattern
-            target = (unified.vocal_pattern[-1], unified.terms.get('S',''), unified.terms.get('P',''))
+            target = (
+                unified.vocal_pattern[-1],
+                unified.terms.get("S", ""),
+                unified.terms.get("P", ""),
+            )
         equivalents = []
         for (maj, min_, con_, fig), mode in cls.MODE_MAP.items():
             if con_ == target[0]:
@@ -478,28 +557,65 @@ class SyllogismReducer:
             pn = sil.get("premisa_menor", "")
             conc = sil.get("conclusion", "")
 
-            major_type, major_terms = cls._classify_proposition(pm)
-            minor_type, minor_terms = cls._classify_proposition(pn)
-            conc_type, conc_terms = cls._classify_proposition(conc)
+            pm_type_raw = sil.get("premisa_mayor_tipo")
+            pn_type_raw = sil.get("premisa_menor_tipo")
+            conc_type_raw = sil.get("conclusion_tipo")
 
-            if not major_type or not minor_type or not conc_type:
+            from concilio_salamanca.debate.syllogism_cache import PropositionType
+
+            major_type = None
+            if pm_type_raw:
+                try:
+                    major_type = PropositionType(pm_type_raw.strip().upper())
+                except ValueError:
+                    pass
+
+            minor_type = None
+            if pn_type_raw:
+                try:
+                    minor_type = PropositionType(pn_type_raw.strip().upper())
+                except ValueError:
+                    pass
+
+            c_type = None
+            if conc_type_raw:
+                try:
+                    c_type = PropositionType(conc_type_raw.strip().upper())
+                except ValueError:
+                    pass
+
+            classified_major_type, major_terms = cls._classify_proposition(pm)
+            classified_minor_type, minor_terms = cls._classify_proposition(pn)
+            classified_conc_type, conc_terms = cls._classify_proposition(conc)
+
+            if not major_type:
+                major_type = classified_major_type
+            if not minor_type:
+                minor_type = classified_minor_type
+            if not c_type:
+                c_type = classified_conc_type
+
+            if not major_type or not minor_type or not c_type:
                 return None
 
             terms = set()
-            if major_terms: terms.update(major_terms)
-            if minor_terms: terms.update(minor_terms)
-            if conc_terms: terms.update(conc_terms)
+            if major_terms:
+                terms.update(major_terms)
+            if minor_terms:
+                terms.update(minor_terms)
+            if conc_terms:
+                terms.update(conc_terms)
 
             terms_list = list(terms)
             if len(terms_list) < 3:
                 terms_list = ["S", "P", "M"]
 
-            figure = cls._deduce_figure(major_type, minor_type, conc_type)
+            figure = cls._deduce_figure(major_type, minor_type, c_type)
 
             return SyllogismPattern(
                 major_type=major_type,
                 minor_type=minor_type,
-                conclusion_type=conc_type,
+                conclusion_type=c_type,
                 figure=figure,
                 subject=terms_list[0] if len(terms_list) > 0 else "S",
                 predicate=terms_list[1] if len(terms_list) > 1 else "P",
@@ -509,36 +625,74 @@ class SyllogismReducer:
             return None
 
     @classmethod
-    def _classify_proposition(cls, text: str) -> Tuple[Optional[PropositionType], List[str]]:
+    def _classify_proposition(
+        cls, text: str
+    ) -> Tuple[Optional[PropositionType], List[str]]:
         text_lower = text.lower()
-        words = re.findall(r'\b[a-zA-Z\u00C0-\u024F]{3,}\b', text_lower)
+        words = re.findall(r"\b[a-zA-Z\u00C0-\u024F]{3,}\b", text_lower)
         if not words:
             return None, []
         terms = []
         for w in words:
-            if w not in ("todo","toda","todos","ningun","ninguna","algun","alguna","es","son",
-                         "no","the","all","some","any","every","that","which","para","con","del",
-                         "una","los","las","por","que","como","sus","entre","cada"):
+            if w not in (
+                "todo",
+                "toda",
+                "todos",
+                "ningun",
+                "ninguna",
+                "algun",
+                "alguna",
+                "es",
+                "son",
+                "no",
+                "the",
+                "all",
+                "some",
+                "any",
+                "every",
+                "that",
+                "which",
+                "para",
+                "con",
+                "del",
+                "una",
+                "los",
+                "las",
+                "por",
+                "que",
+                "como",
+                "sus",
+                "entre",
+                "cada",
+            ):
                 if len(w) > 2 and w not in terms:
                     terms.append(w)
 
-        text_norm = re.sub(r'\s+', ' ', text_lower)
+        text_norm = re.sub(r"\s+", " ", text_lower)
 
-        has_no = bool(re.search(
-            r'\b(no|ningun|ninguna|nunca|jamas|none|without|nada|carece|ausencia|falta)\b',
-            text_norm
-        ))
-        has_some = bool(re.search(
-            r'\b(algun|alguna|algunos|algunas|existe|existen|some|particular|cierto|cierta)\b',
-            text_norm
-        ))
-        has_all = bool(re.search(
-            r'\b(todo|toda|todos|todas|cada|all|every|cualquier|cualquiera)\b',
-            text_norm
-        ))
-        has_not = bool(re.search(
-            r'\b(no es|no son|no esta|no estan|not|is not|are not)\b', text_norm
-        ))
+        has_no = bool(
+            re.search(
+                r"\b(no|ningun|ninguna|nunca|jamas|none|without|nada|carece|ausencia|falta)\b",
+                text_norm,
+            )
+        )
+        has_some = bool(
+            re.search(
+                r"\b(algun|alguna|algunos|algunas|existe|existen|some|particular|cierto|cierta)\b",
+                text_norm,
+            )
+        )
+        has_all = bool(
+            re.search(
+                r"\b(todo|toda|todos|todas|cada|all|every|cualquier|cualquiera)\b",
+                text_norm,
+            )
+        )
+        has_not = bool(
+            re.search(
+                r"\b(no es|no son|no esta|no estan|not|is not|are not)\b", text_norm
+            )
+        )
 
         if has_no and (has_all or not has_some):
             return PropositionType.E, terms[:3]
@@ -553,8 +707,9 @@ class SyllogismReducer:
         return PropositionType.A, terms[:3]
 
     @classmethod
-    def _deduce_figure(cls, major: PropositionType, minor: PropositionType,
-                       conc: PropositionType) -> int:
+    def _deduce_figure(
+        cls, major: PropositionType, minor: PropositionType, conc: PropositionType
+    ) -> int:
         key = (major.value, minor.value, conc.value)
         for (maj, min_, con_, fig), _ in cls.MODE_MAP.items():
             if (maj, min_, con_) == key:
@@ -563,8 +718,12 @@ class SyllogismReducer:
 
     @classmethod
     def get_mode_name(cls, pattern: SyllogismPattern) -> str:
-        key = (pattern.major_type.value, pattern.minor_type.value,
-               pattern.conclusion_type.value, pattern.figure)
+        key = (
+            pattern.major_type.value,
+            pattern.minor_type.value,
+            pattern.conclusion_type.value,
+            pattern.figure,
+        )
         return cls.MODE_MAP.get(key, f"Desconocido-{pattern.figure}")
 
     @classmethod
@@ -596,8 +755,14 @@ class SyllogismCache:
         self.cache_path = Path(cache_path)
         self.entries: Dict[str, CacheEntry] = {}
         self.unified_store: Dict[str, UnifiedSyllogism] = {}
-        self.stats = {"hits": 0, "misses": 0, "tokens_saved_est": 0,
-                       "scholastic_hits": 0, "set_theory_hits": 0, "predicate_hits": 0}
+        self.stats = {
+            "hits": 0,
+            "misses": 0,
+            "tokens_saved_est": 0,
+            "scholastic_hits": 0,
+            "set_theory_hits": 0,
+            "predicate_hits": 0,
+        }
         self._load()
 
     def _load(self):
@@ -616,7 +781,8 @@ class SyllogismCache:
                         middle=pat["middle"],
                     )
                     self.entries[fp] = CacheEntry(
-                        fingerprint=fp, pattern=pattern,
+                        fingerprint=fp,
+                        pattern=pattern,
                         set_relation=entry_data["set_relation"],
                         conclusion_text=entry_data["conclusion_text"],
                         agent=entry_data["agent"],
@@ -646,8 +812,9 @@ class SyllogismCache:
                 "timestamp": entry.timestamp,
                 "hit_count": entry.hit_count,
             }
-        self.cache_path.write_text(json.dumps(data, indent=2, ensure_ascii=False),
-                                   encoding="utf-8")
+        self.cache_path.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
 
     def lookup(self, pattern: SyllogismPattern) -> Optional[CacheEntry]:
         fp = pattern.fingerprint()
@@ -678,9 +845,11 @@ class SyllogismCache:
             return self.unified_store[unified.key]
 
         for existing in self.unified_store.values():
-            if (existing.vocal_pattern == unified.vocal_pattern and
-                existing.figure == unified.figure and
-                existing.terms == unified.terms):
+            if (
+                existing.vocal_pattern == unified.vocal_pattern
+                and existing.figure == unified.figure
+                and existing.terms == unified.terms
+            ):
                 self.stats["hits"] += 1
                 self.stats["tokens_saved_est"] += 300
                 return existing

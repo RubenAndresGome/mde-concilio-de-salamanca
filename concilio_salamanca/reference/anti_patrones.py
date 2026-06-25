@@ -292,7 +292,7 @@ ANTI_PATRONES: List[AntiPatron] = [
         premisa_menor="Este boton de pago no muestra estado de carga ni se deshabilita durante la transaccion.",
         conclusion="Este boton es ontologicamente defectuoso porque permite doble pago accidental.",
         correccion="Implementar estado loading con spinner y disabled=true durante la operacion.",
-        ejemplo_malo='<button onClick={pagar}>Pagar</button>',
+        ejemplo_malo="<button onClick={pagar}>Pagar</button>",
         ejemplo_bueno='<button onClick={pagar} disabled={loading}>{loading ? <Spinner /> : "Pagar"}</button>',
         referencias=["WCAG: Accessible buttons"],
     ),
@@ -329,16 +329,20 @@ def buscar_anti_patrones(termino: str) -> List[AntiPatron]:
     termino_lower = termino.lower()
     resultados = []
     for ap in ANTI_PATRONES:
-        if (termino_lower in ap.nombre.lower() or
-            any(termino_lower in s.lower() for s in ap.sintomas) or
-            termino_lower in ap.premisa_mayor.lower() or
-            termino_lower in ap.conclusion.lower() or
-            any(termino_lower in r.lower() for r in ap.referencias)):
+        if (
+            termino_lower in ap.nombre.lower()
+            or any(termino_lower in s.lower() for s in ap.sintomas)
+            or termino_lower in ap.premisa_mayor.lower()
+            or termino_lower in ap.conclusion.lower()
+            or any(termino_lower in r.lower() for r in ap.referencias)
+        ):
             resultados.append(ap)
     return resultados
 
 
-def listar_anti_patrones(dominio: str = None, severidad: str = None) -> List[AntiPatron]:
+def listar_anti_patrones(
+    dominio: str = None, severidad: str = None
+) -> List[AntiPatron]:
     resultados = ANTI_PATRONES
     if dominio:
         resultados = [ap for ap in resultados if ap.dominio.value == dominio]

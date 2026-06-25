@@ -1,0 +1,38 @@
+{
+  "projects": {
+    "tailwind-css": {
+      "project_id": "tailwind-css",
+      "project_name": "Tailwind CSS",
+      "repo_url": "https://github.com/tailwindlabs/tailwindcss",
+      "license_type": "rns",
+      "registered_at": "2026-06-25T15:44:35.728094",
+      "adopters": [
+        "Acme Corp"
+      ],
+      "total_contributions_usd": 2500.0
+    }
+  },
+  "bulas": {
+    "bula-tailwind-css-20260625154435": {
+      "bula_id": "bula-tailwind-css-20260625154435",
+      "holder_name": "Acme Corp",
+      "project_id": "tailwind-css",
+      "issued_at": "2026-06-25T15:44:35.728815",
+      "expires_at": "2033-06-23T15:44:35.728815",
+      "price_usd": 2500,
+      "tier": "Licencia PYME",
+      "is_std": false
+    }
+  },
+  "payments": [
+    {
+      "payment_id": "pay-tailwind-css-20260625154435",
+      "payer_name": "Acme Corp",
+      "project_id": "tailwind-css",
+      "amount_usd": 2500,
+      "orphan_contribution": 125.0,
+      "paid_at": "2026-06-25T15:44:35.729272",
+      "payment_method": "stripe"
+    }
+  ]
+}

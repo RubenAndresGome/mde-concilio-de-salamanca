@@ -4,7 +4,7 @@ description: >
   Auditoria de codigo por silogismos ontologicos. Usa esta skill cuando necesites
   auditar, revisar, analizar o juzgar codigo fuente para detectar vulnerabilidades,
   anti-patrones, ineficiencias o fallos de diseno. El Concilio de Salamanca convoca
-  un tribunal de 17 agentes IA especializados que debaten usando logica aristotelico-tomista
+  un tribunal de 28 agentes IA especializados que debaten usando logica aristotelico-tomista
   y emiten un veredicto estructurado (Quaestio, Videtur, Sed Contra, Respondeo,
   Determinatio Codici). Soporta OpenAI, DeepSeek, Anthropic, Groq y Ollama.
   Activar con: auditar, revisar, analizar codigo, code review, encontrar bugs,
@@ -14,6 +14,8 @@ description: >
 # Concilio de Salamanca: Auditoria de Codigo por Meta Dialectica Escolastica
 
 > *"Ninguna linea de codigo sera desplegada sin haber sido sometida al tribunal de la razon."*
+
+> **v4.0 — Lanzamiento Open Source**: 38 agentes, PyPI (`pip install concilio-salamanca`), CI/CD integrado, Spec-Kit + Open-Design, ranking calidad-precio.
 
 ## Cuando usar esta skill
 
@@ -45,8 +47,8 @@ py concilio_salamanca/main.py --file <archivo> --agents seguridad,promotor --rou
 # Auditoria de IoT/embebidos
 py concilio_salamanca/main.py --file <archivo> --agents embebidos
 
-# Auditoria multi-proveedor (DeepSeek)
-py concilio_salamanca/main.py --file <archivo> --provider deepseek --model deepseek-chat --agents ia_produccion
+# Auditoria con Enrutamiento Cognitivo (Obreros baratos + Magister Deluxe)
+py concilio_salamanca/main.py --file <archivo> --provider-obreros deepseek --model-obreros deepseek-chat --provider-magister openai --model-magister gpt-4o
 ```
 
 ### Comandos auxiliares
@@ -65,7 +67,7 @@ py concilio_salamanca/main.py --list-providers
 py concilio_salamanca/main.py license --country MX --dev "Nombre" --project "Proyecto" --repo "github.com/..."
 ```
 
-## Agentes disponibles (17)
+## Agentes disponibles (37)
 
 | Grupo | Agentes | Clave |
 |---|---|---|
@@ -74,8 +76,31 @@ py concilio_salamanca/main.py license --country MX --dev "Nombre" --project "Pro
 | Tecnicos | DL, Seguridad, MLOps, Datos, Sistemas, IoT | `tecnicos` |
 | Eticos | Stallman, Stroustrup | `eticos` |
 | Algoritmicos | Korotkevich | `algoritmicos` |
+| Dialécticos/Nuevos | Socrates, Scrum Master, Six Sigma, Llull, Bacon, Vitoria, Ratio | `dialecticos`, `metodologia`, `empiristas`, `ius_gentium` |
+| Token Optimizadores | Ponytail, Graphify, RTK, Telemetry | `token_optimizers` |
 | Embebidos | IoT, Wozniak, Thompson, Sistemas | `embebidos` |
-| Todos | Los 17 | `todos` |
+| **Clean Code** | **Arquimedes, Custos Impacti, Magister Processus** | **`clean_code`** |
+| **Proceso** | **Scrum Master, Six Sigma, Magister Processus** | **`proceso`** |
+| Seguridad Ofensiva | Red Team, Pentest, Abuser, Seguridad | `red_team` |
+| Filosofos Aplicados | Leibniz, Nietzsche, Socrates, Causas | `filosofos_aplicados` |
+| Todos | Los 37 | `todos` |
+
+## Configuración Multi-Modelo (v3.0)
+
+Ahora puedes definir **pesos** para cada proveedor LLM en `config.yaml`. El modelo con mayor peso se usa como Ejecutor (obreros), y el `director_strategy` como Magister (razonamiento profundo).
+
+```yaml
+model_weights:
+  deepseek: 1
+  openai: 0
+  anthropic: 0
+
+roles:
+  ejecutor: "deepseek"
+  director_strategy: "openai"
+```
+
+Los pesos se resuelven automaticamente si no se especifica `--provider` por CLI.
 
 ## Proveedores LLM soportados
 
@@ -112,5 +137,6 @@ automaticamente en sus silogismos. Ver referencia completa en `reference/anti_pa
 2. Si el usuario no especifica agentes, usa `--agents escolasticos` por defecto
 3. Si el usuario pide algo rapido, usa `--mode ejecutivo`
 4. Si no hay API key configurada, sugiere usar `--provider ollama` (local, gratis)
-5. Despues de la auditoria, resume los hallazgos principales en 2-3 lineas
-6. Si el codigo es frontend (React/HTML/CSS), sugiere usar ademas la skill `mde-frontend`
+5. **Economia Fisica Cognitiva**: Si la tarea es larga/costosa, sugiere dividir la carga usando `--provider-obreros ollama --provider-magister openai`.
+6. Despues de la auditoria, resume los hallazgos principales en 2-3 lineas
+7. Si el codigo es frontend (React/HTML/CSS), sugiere usar ademas la skill `mde-frontend`

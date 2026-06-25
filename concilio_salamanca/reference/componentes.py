@@ -4,7 +4,7 @@ Cada componente incluye: especificacion, implementacion correcta, y checklist de
 """
 
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List
 
 
 @dataclass
@@ -24,8 +24,24 @@ COMPONENTES: List[ComponentSpec] = [
         nombre="Button (Primario)",
         categoria="atomos",
         descripcion="Boton de accion principal. Dispara una operacion asincrona y muestra feedback visual.",
-        props=["label", "onClick", "variant ('primary'|'secondary'|'danger')", "disabled", "loading", "size ('sm'|'md'|'lg')"],
-        estados=["idle", "hover", "active", "focus-visible", "loading", "disabled", "success", "error"],
+        props=[
+            "label",
+            "onClick",
+            "variant ('primary'|'secondary'|'danger')",
+            "disabled",
+            "loading",
+            "size ('sm'|'md'|'lg')",
+        ],
+        estados=[
+            "idle",
+            "hover",
+            "active",
+            "focus-visible",
+            "loading",
+            "disabled",
+            "success",
+            "error",
+        ],
         checklist=[
             "Muestra spinner y deshabilita el boton durante loading",
             "El texto es accesible (contraste >= 4.5:1)",
@@ -36,7 +52,7 @@ COMPONENTES: List[ComponentSpec] = [
             "Soporta keyboard (Enter/Space)",
             "Role='button' si no es <button> nativo",
         ],
-        ejemplo='''// Button.tsx
+        ejemplo="""// Button.tsx
 interface ButtonProps {
   label: string;
   onClick: () => Promise<void> | void;
@@ -68,14 +84,23 @@ export function Button({ label, onClick, variant = "primary", disabled, size = "
       {loading ? <Spinner size={size} /> : label}
     </button>
   );
-}''',
+}""",
         anti_patrones_relacionados=["AP-014"],
     ),
     ComponentSpec(
         nombre="Modal (Dialogo)",
         categoria="moleculas",
         descripcion="Ventana de dialogo superpuesta que interrumpe el flujo para una accion confirmatoria.",
-        props=["open", "onClose", "title", "children", "footer", "size ('sm'|'md'|'lg')", "closeOnEscape", "closeOnOverlay"],
+        props=[
+            "open",
+            "onClose",
+            "title",
+            "children",
+            "footer",
+            "size ('sm'|'md'|'lg')",
+            "closeOnEscape",
+            "closeOnOverlay",
+        ],
         estados=["closed", "opening", "open", "closing"],
         checklist=[
             "Renderiza en un portal (createPortal) para evitar stacking context",
@@ -89,7 +114,7 @@ export function Button({ label, onClick, variant = "primary", disabled, size = "
             "ARIA: role='dialog', aria-modal='true', aria-labelledby",
             "z-index via sistema de capas, no hardcodeado",
         ],
-        ejemplo='''// Modal.tsx
+        ejemplo="""// Modal.tsx
 import { createPortal } from "react-dom";
 import { useEffect, useRef } from "react";
 
@@ -144,14 +169,22 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
     </div>,
     document.body
   );
-}''',
+}""",
         anti_patrones_relacionados=["AP-008"],
     ),
     ComponentSpec(
         nombre="Tabla de Datos (DataTable)",
         categoria="organismos",
         descripcion="Tabla paginada, ordenable y filtrable con columnas configurables para visualizar datos tabulares.",
-        props=["columns", "data", "pagination", "sorting", "rowSelection", "loading", "emptyMessage"],
+        props=[
+            "columns",
+            "data",
+            "pagination",
+            "sorting",
+            "rowSelection",
+            "loading",
+            "emptyMessage",
+        ],
         estados=["loading", "empty", "error", "loaded", "sorting", "filtering"],
         checklist=[
             "Paginacion del lado del servidor para datasets > 100 registros",
@@ -167,7 +200,7 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
             "Responsive: scroll horizontal en mobile, columnas colapsables",
             "Virtualizacion para > 1000 filas (react-window)",
         ],
-        ejemplo='''// DataTable.tsx
+        ejemplo="""// DataTable.tsx
 import { useQuery } from "@tanstack/react-query";
 
 interface Column<T> {
@@ -230,7 +263,7 @@ export function DataTable<T extends Record<string, unknown>>({ columns, fetchDat
       <Pagination page={page} total={data.total} onChange={setPage} />
     </div>
   );
-}''',
+}""",
         anti_patrones_relacionados=["AP-011"],
     ),
     ComponentSpec(
@@ -251,7 +284,7 @@ export function DataTable<T extends Record<string, unknown>>({ columns, fetchDat
             "Filtro global de rango de tiempo que afecta a todos los widgets",
             "Cada widget tiene su propio AbortController para cancelar requests obsoletas",
         ],
-        ejemplo='''// Dashboard.tsx
+        ejemplo="""// Dashboard.tsx
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
 
@@ -301,7 +334,7 @@ export function Dashboard({ config }: { config: DashboardConfig }) {
       </div>
     </QueryClientProvider>
   );
-}''',
+}""",
         anti_patrones_relacionados=["AP-005", "AP-012", "AP-015"],
     ),
 ]

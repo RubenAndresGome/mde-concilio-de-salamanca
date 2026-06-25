@@ -12,8 +12,6 @@ y el Magister las usa para la Determinatio final.
 
 from __future__ import annotations
 
-from typing import Optional
-
 
 DETERMINATIO_ESCOLASTICA = """## DETERMINATIO MAGISTRAL
 ### Concilio de Salamanca, Sesion [{sesion}]
@@ -212,11 +210,13 @@ def format_agent_report(agent_output, modo: str = "escolastico") -> str:
             conclusion=sil.conclusion,
         )
 
-    from concilio_salamanca.debate.syllogism_cache import SyllogismReducer, SyllogismPattern, PropositionType
+    from concilio_salamanca.debate.syllogism_cache import SyllogismReducer
 
     try:
         pattern = SyllogismReducer.extract_from_json(s.model_dump())
-        modo_name = SyllogismReducer.get_mode_name(pattern) if pattern else "Desconocido"
+        modo_name = (
+            SyllogismReducer.get_mode_name(pattern) if pattern else "Desconocido"
+        )
         figura = pattern.figure if pattern else 1
     except Exception:
         modo_name = "Desconocido"

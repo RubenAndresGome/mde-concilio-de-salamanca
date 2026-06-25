@@ -23,6 +23,14 @@ from concilio_salamanca.debate.validator_pnc import ValidadorPNC
 from concilio_salamanca.schemas import AgentOutput, DebateState
 
 
+def merge_agent_outputs(left: Dict[str, str], right: Dict[str, str]) -> Dict[str, str]:
+    if right is None or len(right) == 0:
+        return {}
+    new_dict = dict(left)
+    new_dict.update(right)
+    return new_dict
+
+
 class ParallelDebateState(TypedDict, total=False):
     code: str
     language: str
@@ -30,11 +38,19 @@ class ParallelDebateState(TypedDict, total=False):
     agent_keys: List[str]
     round_num: int
     max_rounds: int
-    agent_outputs: Dict[str, str]
-    arguments_history: List[Dict]
+    agent_outputs: Annotated[Dict[str, str], merge_agent_outputs]
+    arguments_history: Annotated[List[Dict], operator.add]
     pnc_validation: Any
     determinatio: Any
     error: str
+
+
+class AgentSendPayload(TypedDict):
+    agent_key: str
+    code: str
+    static_analysis: str
+    arguments_history: List[Dict]
+    round_num: int
 
 
 def build_parallel_graph(
@@ -69,10 +85,21 @@ def build_parallel_graph(
             return []
         sends = []
         for key in resolved:
-            sends.append(Send("run_agent", {"agent_key": key}))
+            sends.append(
+                Send(
+                    "run_agent",
+                    {
+                        "agent_key": key,
+                        "code": state.get("code", ""),
+                        "static_analysis": state.get("static_analysis", ""),
+                        "arguments_history": state.get("arguments_history", []),
+                        "round_num": round_num,
+                    },
+                )
+            )
         return sends
 
-    def run_agent(state: ParallelDebateState):
+    def run_agent(state: AgentSendPayload):
         key = state.get("agent_key", "")
         code = state.get("code", "")
         static = state.get("static_analysis", "")
@@ -97,22 +124,21 @@ def build_parallel_graph(
         output = agent.act(enhanced_code, context if context else None)
         return {
             "agent_outputs": {label: output.raw},
-            "arguments_history": [{
-                "round": state.get("round_num", 0),
-                "arguments": {label: output.raw},
-            }],
         }
 
     def consolidate_round(state: ParallelDebateState):
         outputs = state.get("agent_outputs", {})
-        history = state.get("arguments_history", [])
+        round_num = state.get("round_num", 0)
 
         new_entry = {
-            "round": state.get("round_num", 0),
+            "round": round_num,
             "arguments": outputs,
         }
 
-        return {"arguments_history": [new_entry]}
+        return {
+            "arguments_history": [new_entry],
+            "agent_outputs": {},  # Clear outputs for next round
+        }
 
     def validate_pnc(state: ParallelDebateState):
         if not validator:
@@ -149,8 +175,25 @@ def build_parallel_graph(
     g.add_edge(START, "fanout")
     g.add_conditional_edges("fanout", send_to_agents, ["run_agent"])
     g.add_edge("run_agent", "consolidate")
-    g.add_edge("consolidate", "fanout")
-    g.add_edge("consolidate", "validate_pnc")
+
+    def should_continue(state: ParallelDebateState):
+        round_num = state.get("round_num", 0)
+        max_r = state.get("max_rounds", max_rounds)
+        if round_num < max_r:
+            return "fanout"
+        if enable_pnc:
+            return "validate_pnc"
+        return "magister"
+
+    g.add_conditional_edges(
+        "consolidate",
+        should_continue,
+        {
+            "fanout": "fanout",
+            "validate_pnc": "validate_pnc",
+            "magister": "magister",
+        },
+    )
     g.add_edge("validate_pnc", "magister")
     g.add_edge("magister", END)
 
@@ -158,7 +201,9 @@ def build_parallel_graph(
 
 
 def create_salamanca_graph_parallel(
-    model: BaseChatModel, max_rounds: int = 2, enable_pnc: bool = True,
+    model: BaseChatModel,
+    max_rounds: int = 2,
+    enable_pnc: bool = True,
     agents: List[str] = None,
 ):
     return build_parallel_graph(model, max_rounds, enable_pnc, agents)

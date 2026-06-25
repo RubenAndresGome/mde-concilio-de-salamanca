@@ -1,3 +1,10 @@
+"""
+Esquemas Pydantic y TypedDict para los tipos de datos del Concilio de Salamanca.
+
+Define: DebateState, AgentOutput, AgentVeredict, Silogismo, Veredicto,
+PnCValidation, Determinatio, VotingTable, StaticAnalysis.
+"""
+
 from __future__ import annotations
 
 from enum import Enum
@@ -14,8 +21,17 @@ class Veredicto(str, Enum):
 
 class Silogismo(BaseModel):
     premisa_mayor: str = Field(..., description="Premisa mayor universal")
+    premisa_mayor_tipo: Optional[str] = Field(
+        default=None, description="Tipo A/E/I/O de la premisa mayor"
+    )
     premisa_menor: str = Field(..., description="Premisa menor particular")
+    premisa_menor_tipo: Optional[str] = Field(
+        default=None, description="Tipo A/E/I/O de la premisa menor"
+    )
     conclusion: str = Field(..., description="Conclusión necesaria deducida")
+    conclusion_tipo: Optional[str] = Field(
+        default=None, description="Tipo A/E/I/O de la conclusión"
+    )
 
 
 class AgentVeredict(BaseModel):
@@ -74,16 +90,16 @@ class DebateState(TypedDict, total=False):
     language: str
     round_num: int
     max_rounds: int
-    promotor: Optional[AgentOutput]
-    defensor: Optional[AgentOutput]
-    doctor: Optional[AgentOutput]
-    larouche: Optional[AgentOutput]
-    leon_xiii: Optional[AgentOutput]
+    static_analysis: Optional[str]
+    agent_outputs: Dict[str, AgentOutput]
     arguments_history: List[Dict]
     pnc_validation: Optional[PnCValidation]
     determinatio: Optional[Determinatio]
     error: Optional[str]
-    voting_summary: Optional[Dict[str, int]] = None
+    voting_summary: Optional[Dict[str, int]]
+    pending_questions: List[str]
+    socratic_checks: Optional[List[str]]
+    murphy_checks: Optional[List[str]]
 
 
 class AgentVote(BaseModel):
