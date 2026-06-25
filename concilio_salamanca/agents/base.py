@@ -63,11 +63,11 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
         cache = get_syllogism_cache()
         fp = self._code_fingerprint(code)
         entry = cache.entries.get(f"code:{fp}")
-        if entry and hasattr(entry, 'conclusion_text'):
+        if entry and hasattr(entry, "conclusion_text"):
             structured = self._parse_response(entry.conclusion_text)
             cached = AgentOutput(
                 raw=entry.conclusion_text,
-                structured=structured,
+                structured=structured if structured and "[Error" not in structured.fundamento else None,
                 timestamp=time.time(),
             )
             return cached
@@ -157,13 +157,28 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
             pass
         return output
 
+    @staticmethod
+    def _extract_json(raw: str) -> str:
+        import re
+        raw_stripped = raw.strip()
+        if raw_stripped.startswith("{") and raw_stripped.endswith("}"):
+            return raw_stripped
+        match = re.search(r'\{\s*"agente".*?\}', raw, re.DOTALL)
+        if match:
+            return match.group(0)
+        for marker in ("```json", "```"):
+            if marker in raw:
+                parts = raw.split(marker)
+                if len(parts) > 1:
+                    inner = parts[1].split("```")[0]
+                    inner_match = re.search(r'\{.*\}', inner, re.DOTALL)
+                    if inner_match:
+                        return inner_match.group(0)
+        return raw
+
     def _parse_response(self, raw: str) -> Optional[AgentVeredict]:
         try:
-            json_str = raw.strip()
-            if "```json" in json_str:
-                json_str = json_str.split("```json")[1].split("```")[0]
-            elif "```" in json_str:
-                json_str = json_str.split("```")[1].split("```")[0]
+            json_str = self._extract_json(raw)
             data = json.loads(json_str)
             return AgentVeredict(
                 agente=data.get("agente", self.role_name),
@@ -175,18 +190,18 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
                 veredicto=Veredicto(data.get("veredicto", "RESERVA")),
                 fundamento=data.get("fundamento", ""),
             )
-        except (json.JSONDecodeError, KeyError, TypeError):
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
             return AgentVeredict(
                 agente=self.role_name,
                 rol=self.role_name,
                 silogismo=Silogismo(
-                    premisa_mayor="[Error de parseo]",
+                    premisa_mayor=f"[Error de parseo: {str(e)[:100]}]",
                     premisa_menor="[Error de parseo]",
                     conclusion="[Error de parseo]",
                 ),
                 principio_no_contradiccion=True,
                 veredicto=Veredicto.RESERVA,
-                fundamento=f"Error al parsear la respuesta del modelo. Respuesta raw: {raw[:500]}",
+                fundamento=f"Error al parsear JSON de respuesta. LLM emitio formato invalido. Raw: {raw[:300]}",
             )
 
     @abstractmethod

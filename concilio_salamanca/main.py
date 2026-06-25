@@ -39,7 +39,20 @@ def load_config(config_path: Optional[str] = None) -> dict:
     return {}
 
 
-def detect_language(code: str) -> str:
+def detect_language(code: str, filepath: str = "") -> str:
+    ext = os.path.splitext(filepath)[1].lower() if filepath else ""
+    ext_map = {
+        ".py": "python", ".js": "javascript", ".mjs": "javascript",
+        ".ts": "typescript", ".tsx": "typescript", ".jsx": "javascript",
+        ".java": "java", ".go": "go", ".rs": "rust",
+        ".c": "c", ".cpp": "cpp", ".h": "c", ".hpp": "cpp",
+        ".ino": "c", ".rb": "ruby", ".php": "php",
+        ".sql": "sql", ".sh": "bash", ".yaml": "yaml",
+        ".yml": "yaml", ".json": "json", ".xml": "xml",
+        ".html": "html", ".css": "css", ".scss": "scss",
+    }
+    if ext in ext_map:
+        return ext_map[ext]
     code_lower = code.strip().lower()
     if "def " in code or "import " in code or "print(" in code:
         return "python"
@@ -207,19 +220,6 @@ def format_output_executive(result: dict, agent_labels: list, rounds: int, votin
         num_agentes=len(agent_labels),
         num_contradicciones=num_contradicciones,
     )
-    determinatio = result.get("determinatio")
-    pnc = result.get("pnc_validation")
-
-    output = {
-        "timestamp": datetime.now().isoformat(),
-        "veredicto_final": determinatio.veredicto_final.value if determinatio else "ERROR",
-        "determinatio": determinatio.model_dump() if determinatio else None,
-    }
-
-    if pnc:
-        output["pnc_validation"] = pnc.model_dump()
-
-    return json.dumps(output, indent=2, ensure_ascii=False, default=str)
 
 
 def format_output_text(result: dict) -> str:
@@ -641,7 +641,7 @@ def main():
         print("Error: Debes proporcionar --code o --file")
         sys.exit(1)
 
-    language = detect_language(code)
+    language = detect_language(code, args.file or "")
 
     from concilio_salamanca.agents import resolve_agents
 

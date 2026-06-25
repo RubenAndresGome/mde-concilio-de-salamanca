@@ -29,24 +29,27 @@ class MagisterDeterminans:
         state: DebateState,
         pnc_validation: Optional[PnCValidation] = None,
     ) -> str:
-        argumentos_promotor = state.get("promotor")
-        argumentos_defensor = state.get("defensor")
-        argumentos_doctor = state.get("doctor")
-        argumentos_larouche = state.get("larouche")
-        argumentos_leon = state.get("leon_xiii")
         code = state.get("code", "")
+        history = state.get("arguments_history", [])
 
         arguments_text = ""
-        for nombre, output in [
-            ("Promotor Fidei", argumentos_promotor),
-            ("Defensor Causae Finalis", argumentos_defensor),
-            ("Doctor Materiae", argumentos_doctor),
-            ("Arquitecto LaRouche", argumentos_larouche),
-            ("Defensor Leonis XIII", argumentos_leon),
-        ]:
-            if output:
-                content = output.raw if hasattr(output, "raw") else str(output)
-                arguments_text += f"\n\n===== {nombre} =====\n{content}"
+
+        if history:
+            last_round = history[-1].get("arguments", {})
+            for agent_name, raw_content in last_round.items():
+                content = raw_content if isinstance(raw_content, str) else str(raw_content)
+                arguments_text += f"\n\n===== {agent_name} =====\n{content[:3000]}"
+        else:
+            for key in ["promotor", "defensor", "doctor", "larouche", "leon_xiii",
+                         "linus", "wozniak", "stallman", "stroustrup", "thompson",
+                         "korotkevich", "auditor_dl", "seguridad", "mlops", "datos",
+                         "sistemas", "iot", "socrates", "scrum", "sixsigma",
+                         "llull", "bacon", "vitoria", "ratio",
+                         "ponytail", "graphify", "rtk", "telemetry"]:
+                output = state.get(key)
+                if output:
+                    content = output.raw if hasattr(output, "raw") else str(output)
+                    arguments_text += f"\n\n===== {key} =====\n{content[:3000]}"
 
         pnc_text = ""
         if pnc_validation:

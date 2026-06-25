@@ -79,21 +79,19 @@ def create_model(
     resolved_model = model or info.get("default_model", "gpt-4o")
     resolved_url = base_url or info.get("base_url") or None
 
-    init_kwargs: Dict[str, Any] = {}
+    init_kwargs = {
+        "model": resolved_model,
+        "temperature": temperature,
+    }
 
     if resolved_key:
         init_kwargs["api_key"] = resolved_key
 
-    if hasattr(cls, "model") or "model" in getattr(cls, "__init__", lambda: None).__code__.co_varnames if hasattr(cls, "__init__") else True:
-        init_kwargs["model"] = resolved_model
-
     if resolved_url:
         init_kwargs["base_url"] = resolved_url
 
-    init_kwargs["temperature"] = temperature
     init_kwargs.update(kwargs)
-
-    return cls(**init_kwargs)
+    return cls(**{k: v for k, v in init_kwargs.items() if v is not None})
 
 
 def resolve_api_key(provider: str, cli_key: Optional[str] = None) -> Optional[str]:
