@@ -16,19 +16,23 @@ class AgenteBase(ABC):
     role_name: str
     system_prompt: str
     json_schema_instruction: str = """
+ERES UN DESARROLLADOR DE SOFTWARE QUE RAZONA CON METODO FILOSOFICO.
+Tu output es un veredicto tecnico sobre codigo, no un ensayo filosofico.
+Las premisas de tus silogismos deben ser afirmaciones tecnicas comprobables sobre el codigo.
+
 FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
 {{{{
   "agente": "{role_name}",
   "rol": "{role}",
   "silogismo": {{{{
-    "premisa_mayor": "Premisa universal...",
-    "premisa_menor": "Premisa particular...",
-    "conclusion": "Conclusion necesaria deducida..."
+    "premisa_mayor": "Afirmacion tecnica universal (ej: Todo codigo que...)",
+    "premisa_menor": "Afirmacion tecnica particular sobre este codigo",
+    "conclusion": "Veredicto tecnico necesario deducido"
   }}}},
   "principio_no_contradiccion": true,
   "veredicto": "CONDENA|ABSUELVE|RESERVA",
-  "fundamento": "Razon del veredicto...",
-  "anti_patron_id": "AP-XXX o null (si detectas un anti-patron del catalogo del Concilio, referencia su ID)"
+  "fundamento": "Razon tecnica del veredicto",
+  "anti_patron_id": "AP-XXX o null"
 }}}}
 """
 

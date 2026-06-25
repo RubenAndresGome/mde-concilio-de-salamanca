@@ -29,6 +29,10 @@ from concilio_salamanca.agents.ingeniero_iot import IngenieroIoT
 from concilio_salamanca.agents.socrates import Socrates
 from concilio_salamanca.agents.scrum_master import ScrumMaster
 from concilio_salamanca.agents.six_sigma import SixSigma
+from concilio_salamanca.agents.llull import Llull
+from concilio_salamanca.agents.bacon import Bacon
+from concilio_salamanca.agents.vitoria import Vitoria
+from concilio_salamanca.agents.ratio import Ratio
 from concilio_salamanca.agents.ken_thompson import KenThompson
 from concilio_salamanca.agents.linus_torvalds import LinusTorvalds
 from concilio_salamanca.agents.magister_determinans import MagisterDeterminans
@@ -221,6 +225,22 @@ def test_six_sigma():
     _test_agent(SixSigma)
 
 
+def test_llull():
+    _test_agent(Llull)
+
+
+def test_bacon():
+    _test_agent(Bacon)
+
+
+def test_vitoria():
+    _test_agent(Vitoria)
+
+
+def test_ratio():
+    _test_agent(Ratio)
+
+
 def test_magister_parse():
     model = _mock_model()
     magister = MagisterDeterminans(model)
@@ -257,7 +277,7 @@ def test_pnc_validator_parse():
 
 # --- Agent registry tests ---
 def test_agent_registry_has_all_agents():
-    assert len(AGENT_REGISTRY) == 20
+    assert len(AGENT_REGISTRY) == 24
     expected_keys = [
         "promotor", "defensor", "doctor", "larouche", "leon_xiii",
         "linus", "wozniak", "stallman", "stroustrup", "thompson", "korotkevich",
@@ -290,7 +310,7 @@ def test_resolve_agents_mixed():
 
 def test_resolve_agents_todos():
     result = resolve_agents(["todos"])
-    assert len(result) == 20
+    assert len(result) == 24
 
 
 def test_resolve_agents_no_duplicates():

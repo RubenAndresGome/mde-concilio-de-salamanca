@@ -20,6 +20,10 @@ from concilio_salamanca.agents.ingeniero_iot import IngenieroIoT
 from concilio_salamanca.agents.socrates import Socrates
 from concilio_salamanca.agents.scrum_master import ScrumMaster
 from concilio_salamanca.agents.six_sigma import SixSigma
+from concilio_salamanca.agents.llull import Llull
+from concilio_salamanca.agents.bacon import Bacon
+from concilio_salamanca.agents.vitoria import Vitoria
+from concilio_salamanca.agents.ratio import Ratio
 
 AGENT_REGISTRY = {
     "promotor": ("Promotor Fidei", PromotorFidei),
@@ -42,6 +46,10 @@ AGENT_REGISTRY = {
     "socrates": ("Socrates (Philosophus Elenchus)", Socrates),
     "scrum": ("Magister Processus (Scrum Master)", ScrumMaster),
     "sixsigma": ("Magister Qualitatis (Six Sigma)", SixSigma),
+    "llull": ("Architectus Arboris (Ramon Llull)", Llull),
+    "bacon": ("Magister Experientiae (Roger Bacon)", Bacon),
+    "vitoria": ("Custos Iuris (Francisco de Vitoria)", Vitoria),
+    "ratio": ("Magister Pedagogiae (Ratio Studiorum)", Ratio),
 }
 
 AGENT_GROUPS = {
@@ -59,6 +67,9 @@ AGENT_GROUPS = {
     "calidad": ["sixsigma", "scrum", "mlops", "datos"],
     "dialecticos": ["socrates", "promotor", "defensor"],
     "metodologia": ["scrum", "sixsigma"],
+    "ius_gentium": ["vitoria", "stallman", "leon_xiii"],
+    "pedagogicos": ["ratio", "socrates"],
+    "empiristas": ["bacon", "linus", "thompson"],
 }
 
 def get_agent_keys() -> list:
@@ -114,6 +125,10 @@ __all__ = [
     "Socrates",
     "ScrumMaster",
     "SixSigma",
+    "Llull",
+    "Bacon",
+    "Vitoria",
+    "Ratio",
     "AGENT_REGISTRY",
     "AGENT_GROUPS",
     "get_agent_keys",

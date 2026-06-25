@@ -51,9 +51,14 @@ py concilio_salamanca/main.py audit --file <archivo>
 | Escolasticos (default) | `escolasticos` | Promotor, Defensor, Doctor, LaRouche, Leon XIII |
 | Pragmaticos | `pragmaticos` | Linus Torvalds, Steve Wozniak, Ken Thompson |
 | Tecnicos | `tecnicos` | DL, Seguridad, MLOps, Datos, Sistemas, IoT |
-| Seguridad | `seguridad_completa` | Promotor, Defensor, Doctor, Seguridad, MLOps, Datos |
+| Metodologia | `metodologia` | Scrum Master, Six Sigma |
+| Calidad | `calidad` | Six Sigma, Scrum, MLOps, Datos |
+| Dialecticos | `dialecticos` | Socrates, Promotor, Defensor |
+| Empiristas | `empiristas` | Roger Bacon, Linus, Thompson |
+| Ius Gentium | `ius_gentium` | Vitoria, Stallman, Leon XIII |
+| Pedagogicos | `pedagogicos` | Ratio Studiorum, Socrates |
 | Embebidos | `embebidos` | IoT, Wozniak, Thompson, Sistemas |
-| Todos | `todos` | Los 17 agentes |
+| Todos | `todos` | Los 24 agentes |
 
 ## Proveedores LLM
 
