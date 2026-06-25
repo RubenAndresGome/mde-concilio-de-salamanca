@@ -16,6 +16,9 @@ from concilio_salamanca.prompts.system_prompts import (
     PROMOTOR_FIDEI,
     RICHARD_STALLMAN,
     SANITARIO_DATOS,
+    SCRUM_MASTER,
+    SIX_SIGMA,
+    SOCRATES,
     STEVE_WOZNIAK,
 )
 
@@ -38,4 +41,7 @@ __all__ = [
     "SANITARIO_DATOS",
     "ARQUITECTO_SISTEMAS",
     "INGENIERO_IOT",
+    "SOCRATES",
+    "SCRUM_MASTER",
+    "SIX_SIGMA",
 ]

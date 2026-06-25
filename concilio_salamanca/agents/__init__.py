@@ -17,6 +17,9 @@ from concilio_salamanca.agents.ingeniero_mlops import IngenieroMLOps
 from concilio_salamanca.agents.sanitario_datos import SanitarioDatos
 from concilio_salamanca.agents.arquitecto_sistemas import ArquitectoSistemas
 from concilio_salamanca.agents.ingeniero_iot import IngenieroIoT
+from concilio_salamanca.agents.socrates import Socrates
+from concilio_salamanca.agents.scrum_master import ScrumMaster
+from concilio_salamanca.agents.six_sigma import SixSigma
 
 AGENT_REGISTRY = {
     "promotor": ("Promotor Fidei", PromotorFidei),
@@ -36,6 +39,9 @@ AGENT_REGISTRY = {
     "datos": ("Purgator Datorum (Data Sanitation)", SanitarioDatos),
     "sistemas": ("Architectus Systematis (Systems)", ArquitectoSistemas),
     "iot": ("Architectus Siliconis (IoT Embedded)", IngenieroIoT),
+    "socrates": ("Socrates (Philosophus Elenchus)", Socrates),
+    "scrum": ("Magister Processus (Scrum Master)", ScrumMaster),
+    "sixsigma": ("Magister Qualitatis (Six Sigma)", SixSigma),
 }
 
 AGENT_GROUPS = {
@@ -50,6 +56,9 @@ AGENT_GROUPS = {
     "embebidos": ["iot", "wozniak", "thompson", "sistemas"],
     "seguridad_completa": ["promotor", "defensor", "doctor", "seguridad", "mlops", "datos"],
     "ia_produccion": ["auditor_dl", "mlops", "datos", "sistemas", "seguridad", "promotor"],
+    "calidad": ["sixsigma", "scrum", "mlops", "datos"],
+    "dialecticos": ["socrates", "promotor", "defensor"],
+    "metodologia": ["scrum", "sixsigma"],
 }
 
 def get_agent_keys() -> list:
@@ -102,6 +111,9 @@ __all__ = [
     "SanitarioDatos",
     "ArquitectoSistemas",
     "IngenieroIoT",
+    "Socrates",
+    "ScrumMaster",
+    "SixSigma",
     "AGENT_REGISTRY",
     "AGENT_GROUPS",
     "get_agent_keys",
