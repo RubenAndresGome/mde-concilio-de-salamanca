@@ -83,3 +83,29 @@ class DebateState(TypedDict, total=False):
     pnc_validation: Optional[PnCValidation]
     determinatio: Optional[Determinatio]
     error: Optional[str]
+    voting_summary: Optional[Dict[str, int]] = None
+
+
+class AgentVote(BaseModel):
+    agente: str
+    veredicto: Veredicto
+    silogismo_resumen: str = ""
+
+
+class VotingTable(BaseModel):
+    votos: List[AgentVote] = Field(default_factory=list)
+    condenas: int = 0
+    absoluciones: int = 0
+    reservas: int = 0
+    consenso: bool = False
+    veredicto_mayoritario: Optional[Veredicto] = None
+
+
+class SARIFReport(BaseModel):
+    version: str = "2.1.0"
+    runs: List[Dict] = Field(default_factory=list)
+
+
+class StaticAnalysis(BaseModel):
+    metrics: Dict[str, object] = Field(default_factory=dict)
+    summary: str = ""

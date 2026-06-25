@@ -670,3 +670,49 @@ def test_providers():
     output = list_providers()
     assert "openai" in output
     assert "deepseek" in output
+
+
+def test_static_analysis():
+    from concilio_salamanca.debate.static_analysis import analyze_code, format_analysis, auto_select_agents
+
+    py_code = """def foo(x: int) -> int:
+    if x > 0:
+        return x * 2
+    return 0"""
+
+    metrics = analyze_code(py_code, "test.py")
+    assert metrics["extension"] == ".py"
+    assert metrics["funciones"] >= 1
+    assert metrics["complejidad_ciclomatica_aprox"] >= 1
+
+    formatted = format_analysis(metrics)
+    assert "lineas" in formatted.lower()
+
+    agents = auto_select_agents("test.py", py_code)
+    assert "promotor" in agents
+    assert "defensor" in agents
+
+
+def test_precedents():
+    from concilio_salamanca.debate.precedents import PrecedentEngine, Precedent
+    from concilio_salamanca.debate.syllogism_cache import SyllogismReducer, SyllogismPattern, PropositionType
+    import tempfile, os
+
+    tmp = os.path.join(tempfile.gettempdir(), "test_precedents.json")
+    engine = PrecedentEngine(path=tmp)
+
+    pattern = SyllogismPattern(PropositionType.A, PropositionType.A, PropositionType.A, 1, "X", "Y", "Z")
+    unified = SyllogismReducer.reduce_all(pattern)
+    engine.add(unified, "CONDENA", "Test", "def foo(): pass")
+
+    results = engine.search(["X", "Y"])
+    assert len(results) >= 1
+
+    context = engine.format_context(["X", "Y"])
+    assert "PRECEDENTES" in context
+
+    stats = engine.stats()
+    assert "Precedentes" in stats
+
+    if os.path.exists(tmp):
+        os.remove(tmp)

@@ -56,7 +56,125 @@ def detect_language(code: str) -> str:
     return "auto"
 
 
-def format_output_executive(result: dict, agent_labels: list, rounds: int) -> str:
+def format_output_json(result: dict) -> str:
+    determinatio = result.get("determinatio")
+    pnc = result.get("pnc_validation")
+    voting = result.get("voting", {})
+
+    output = {
+        "timestamp": datetime.now().isoformat(),
+        "veredicto_final": determinatio.veredicto_final.value if determinatio else "ERROR",
+        "determinatio": determinatio.model_dump() if determinatio else None,
+        "voting": voting,
+    }
+
+    if pnc:
+        output["pnc_validation"] = pnc.model_dump()
+
+    return json.dumps(output, indent=2, ensure_ascii=False, default=str)
+
+
+def format_output_mermaid(result: dict) -> str:
+    from concilio_salamanca.agents import get_agent_label
+
+    determinatio = result.get("determinatio")
+    pnc = result.get("pnc_validation")
+    state = result.get("state", {})
+    history = state.get("arguments_history", [])
+
+    lines = ["```mermaid", "graph TD"]
+    lines.append("  START[/Codigo Fuente/] --> R1[Ronda 1]")
+
+    seen_agents = set()
+    for round_data in history:
+        r = round_data.get("round", 1)
+        for agent_name_raw in round_data.get("arguments", {}):
+            label = agent_name_raw
+            safe = label.replace(" ", "_").replace("(", "").replace(")", "").replace(".", "")
+            if safe not in seen_agents:
+                verdict = "RESERVA"
+                color = "#f0c040"
+                for agent_output_dict in []:
+                    pass
+                lines.append(f'  R{r} --> {safe}["{label[:30]}"]')
+                lines.append(f'  style {safe} fill:{color}')
+                seen_agents.add(safe)
+
+    if pnc and pnc.hay_contradicciones:
+        for c in pnc.contradicciones:
+            a = c.agente_a.replace(" ", "_").replace("(", "").replace(")", "")
+            b = c.agente_b.replace(" ", "_").replace("(", "").replace(")", "")
+            lines.append(f'  {a} -.->|contradice| {b}')
+            lines.append(f'  linkStyle {len(lines)-3} stroke:red')
+
+    verdict_color = {"CONDENA": "#c00000", "ABSUELVE": "#00a000", "RESERVA": "#f0c040"}
+    v = determinatio.veredicto_final.value if determinatio else "RESERVA"
+    lines.append(f'  R{len(history)} --> MAG[/Magister: {v}/]')
+    lines.append(f'  style MAG fill:{verdict_color.get(v, "#f0c040")},color:white')
+    lines.append("```")
+
+    return "\n".join(lines)
+
+
+def format_output_sarif(result: dict, filepath: str = "") -> str:
+    determinatio = result.get("determinatio")
+
+    run = {
+        "tool": {"driver": {"name": "Concilio de Salamanca MDE", "informationUri": "https://github.com/concilio-salamanca"}},
+        "results": [],
+    }
+
+    if determinatio:
+        level = "error" if determinatio.veredicto_final.value == "CONDENA" else "warning"
+        run["results"].append({
+            "ruleId": f"MDE-{determinatio.veredicto_final.value}",
+            "level": level,
+            "message": {"text": determinatio.determinatio_codici[:500]},
+            "locations": [{"physicalLocation": {"artifactLocation": {"uri": filepath or "codigo"}}}],
+        })
+
+    report = {
+        "version": "2.1.0",
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "runs": [run],
+    }
+
+    return json.dumps(report, indent=2, ensure_ascii=False)
+
+
+def build_voting_table(result: dict) -> dict:
+    state = result.get("state", {})
+    history = state.get("arguments_history", [])
+
+    votes = {"CONDENA": 0, "ABSUELVE": 0, "RESERVA": 0}
+    agent_votes = []
+
+    for round_data in history:
+        for name, raw in round_data.get("arguments", {}).items():
+            raw_upper = raw.upper() if hasattr(raw, "upper") else ""
+            for v in ["CONDENA", "ABSUELVE", "RESERVA"]:
+                if v in raw_upper:
+                    votes[v] += 1
+                    agent_votes.append({"agente": name, "veredicto": v})
+                    break
+            else:
+                votes["RESERVA"] += 1
+                agent_votes.append({"agente": name, "veredicto": "RESERVA"})
+
+    total = sum(votes.values()) or 1
+    majority = max(votes, key=votes.get)
+    consensus = votes[majority] / total >= 0.67
+
+    return {
+        "votos": votes,
+        "agentes": agent_votes,
+        "consenso": consensus,
+        "mayoria": majority,
+        "total": total,
+    }
+
+
+def format_output_executive(result: dict, agent_labels: list, rounds: int, voting: dict = None) -> str:
     from concilio_salamanca.reference.determinatio_template import format_determinatio
 
     determinatio = result.get("determinatio")
@@ -258,7 +376,7 @@ def main():
         "--output", "-o",
         type=str,
         default="text",
-        choices=["text", "json", "markdown"],
+        choices=["text", "json", "markdown", "mermaid", "sarif"],
         help="Formato de salida",
     )
     parser.add_argument(
@@ -488,6 +606,13 @@ def main():
 
     if args.interactive:
         agent_selection = prompt_agents_interactive()
+    elif args.agents == "auto" or (not args.agents and args.file):
+        from concilio_salamanca.debate.static_analysis import auto_select_agents
+
+        code_for_auto = code if args.code else ""
+        filepath_auto = args.file if args.file else ""
+        agent_selection = auto_select_agents(filepath_auto, code_for_auto)
+        print(f"  Auto-seleccion: {agent_selection}")
     elif args.agents:
         agent_selection = [a.strip() for a in args.agents.split(",") if a.strip()]
     elif debate_cfg.get("agents"):
@@ -552,6 +677,17 @@ def main():
 
     from concilio_salamanca.debate.orchestrator import DebateConfig, DebateOrchestrator
 
+    static_analysis_text = ""
+    if args.file and not args.code:
+        from concilio_salamanca.debate.static_analysis import analyze_file, format_analysis
+        try:
+            static_metrics = analyze_file(args.file)
+            static_analysis_text = format_analysis(static_metrics)
+            print(f"  Static: {static_metrics.get('lineas_totales', '?')} lineas, "
+                  f"complejidad ~{static_metrics.get('complejidad_ciclomatica_aprox', '?')}")
+        except Exception:
+            pass
+
     if args.cache_stats:
         from concilio_salamanca.debate.syllogism_cache import get_syllogism_cache
         cache = get_syllogism_cache()
@@ -566,8 +702,27 @@ def main():
     orchestrator = DebateOrchestrator(model, config)
     result = orchestrator.run_debate(code, language)
 
+    voting = build_voting_table(result)
+    result["voting"] = voting
+
+    from concilio_salamanca.debate.precedents import get_precedent_engine
+    precedent_engine = get_precedent_engine()
+    if result.get("determinatio"):
+        terms = [language, result["determinatio"].veredicto_final.value]
+        precedent_engine.add_precedent_from_result(result)
+
+    if args.output == "mermaid":
+        output = format_output_mermaid(result)
+        print(output)
+        return
+
+    if args.output == "sarif":
+        output = format_output_sarif(result, args.file or "stdin")
+        print(output)
+        return
+
     if args.mode == "ejecutivo" and args.output == "text":
-        output = format_output_executive(result, agent_labels, max_rounds)
+        output = format_output_executive(result, agent_labels, max_rounds, voting)
     else:
         formatters = {
             "json": format_output_json,
