@@ -15,3 +15,9 @@ streamlit>=1.30.0
 # langchain-anthropic  # para --provider anthropic
 # langchain-groq       # para --provider groq
 # langchain-ollama     # para --provider ollama
+
+# Herramientas opcionales
+# markitdown[pdf]      # para extraer PDFs en licencia RNS
+# beautifulsoup4       # para validador_kpi.py (MDE Frontend)
+# cssutils             # para validador_kpi.py (MDE Frontend)
+

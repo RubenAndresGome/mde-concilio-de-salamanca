@@ -21,7 +21,10 @@ debate:
   # Agentes participantes (claves separadas por comas o nombre de grupo)
   # Opciones: promotor, defensor, doctor, larouche, leon_xiii,
   #           linus, wozniak, stallman, stroustrup, thompson, korotkevich
-  # Grupos: escolasticos, pragmaticos, eticos, algoritmicos, acusacion, defensa, todos
+  #           ockham, arquimedes, custos_impacti, magister_processus,
+  #           magister_delineationis, redteam, pentest, abuser, causas, leibniz, nietzsche
+  # Grupos: escolasticos, pragmaticos, eticos, algoritmicos, acusacion, defensa,
+  #         tecnicos, clean_code, logici, delineatio, red_team, proceso, todos
   agents: ["promotor", "defensor", "doctor", "larouche", "leon_xiii"]
 
 output:

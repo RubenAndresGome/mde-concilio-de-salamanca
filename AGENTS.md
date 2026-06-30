@@ -62,3 +62,4 @@ concilio license --country MX --dev "Nombre" --project "Proyecto"
 | `concilio_salamanca/debate/providers.py` | Proveedores LLM + ModelRanker |
 | `concilio_salamanca/prompts/system_prompts.py` | Todos los prompts (884+ líneas) |
 | `concilio_salamanca/license_generator.py` | Generador de licencia RNS v5.0 |
+| `concilio_salamanca/reference/mde_arquitectura_supervisor.md` | Manifiesto fundacional: arquitectura neurosimbólica, 4 Causas, Zonificación Crítica |
