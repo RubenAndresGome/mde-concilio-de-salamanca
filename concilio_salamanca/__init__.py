@@ -1,8 +1,9 @@
 """
-Concilio de Salamanca — MDE Skill de Auditoria de Codigo.
+MDE Politeia Conciliar de Salamanca — Auditoria de Codigo por Meta Dialectica Escolastica.
 
-Sistema de 38 agentes IA especializados que debaten usando logica
-aristotelico-tomista y emiten un veredicto estructurado.
+Sistema de 39 agentes IA especializados que debaten usando logica
+aristotelico-tomista y emiten veredictos estructurados bajo el
+Principio de No Contradiccion.
 """
 
 from __future__ import annotations

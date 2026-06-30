@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "concilio-salamanca"
 version = "1.0.0"
-description = "MDE Skill — Auditoria de Codigo por Meta Dialectica Escolastica"
+description = "MDE Politeia Conciliar de Salamanca — Auditoria de Codigo por Meta Dialectica Escolastica (39 agentes IA, silogismos, logica de conjuntos)"
 readme = "concilio_salamanca/README.md"
-license = {text = "RERUM NOVARUM STATUTO (RNS) v4.1"}
+license = {text = "RNS v5.0"}
 requires-python = ">=3.11"
-keywords = ["code-review", "audit", "llm", "ai-agents", "scholastic", "dialectics"]
+keywords = ["code-review", "audit", "llm", "ai-agents", "scholastic", "dialectics", "mcp", "silogismos"]
 authors = [
-    {name = "MDE Skill Contributors"},
+    {name = "MDE Politeia Conciliar de Salamanca"},
 ]
 
 classifiers = [

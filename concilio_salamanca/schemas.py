@@ -100,6 +100,7 @@ class DebateState(TypedDict, total=False):
     pending_questions: List[str]
     socratic_checks: Optional[List[str]]
     murphy_checks: Optional[List[str]]
+    ockham_analysis: Optional[Dict]
 
 
 class AgentVote(BaseModel):

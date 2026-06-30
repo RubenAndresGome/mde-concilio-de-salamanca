@@ -241,6 +241,12 @@ AGENT_DEFS = {
         "magister_delineationis",
         "MagisterDelineationis",
     ),
+    "ockham": (
+        "OckhamDev (Navaja de la No-Contradiccion)",
+        system_prompts.OCKHAMDEV,
+        "ockham_dev",
+        "OckhamDev",
+    ),
 }
 
 AGENT_REGISTRY = {}
@@ -306,6 +312,7 @@ AGENT_GROUPS = {
     "clean_code": ["arquimedes", "custos_impacti", "magister_processus"],
     "proceso": ["scrum", "sixsigma", "magister_processus"],
     "delineatio": ["magister_delineationis", "vitoria", "ratio"],
+    "logici": ["ockham", "socrates", "bacon", "leibniz"],
 }
 
 

@@ -1,361 +1,4 @@
-from __future__ import annotations
-
-from datetime import datetime
-from pathlib import Path
-from typing import Dict, Optional
-
-
-BIG_MAC_INDEX: Dict[str, float] = {
-    "US": 5.69,
-    "CH": 7.73,
-    "NO": 7.14,
-    "SE": 5.84,
-    "DK": 5.67,
-    "IL": 5.34,
-    "CA": 5.27,
-    "AU": 5.07,
-    "NZ": 4.88,
-    "GB": 4.82,
-    "KR": 4.43,
-    "AE": 4.39,
-    "JP": 4.35,
-    "DE": 4.25,
-    "FR": 4.20,
-    "IT": 4.15,
-    "ES": 3.95,
-    "PT": 3.72,
-    "GR": 3.68,
-    "PL": 3.45,
-    "CZ": 3.42,
-    "HU": 3.35,
-    "RO": 3.28,
-    "CL": 3.75,
-    "BR": 4.25,
-    "AR": 3.15,
-    "CO": 3.48,
-    "PE": 3.25,
-    "MX": 3.19,
-    "CR": 4.10,
-    "PA": 3.90,
-    "DO": 3.55,
-    "GT": 3.50,
-    "EC": 3.40,
-    "PY": 3.30,
-    "BO": 3.20,
-    "UY": 4.80,
-    "ZA": 3.10,
-    "EG": 2.55,
-    "NG": 2.40,
-    "KE": 2.30,
-    "ET": 2.10,
-    "IN": 2.39,
-    "CN": 3.25,
-    "TH": 3.05,
-    "VN": 2.85,
-    "ID": 2.55,
-    "PH": 2.60,
-    "PK": 2.10,
-    "BD": 2.05,
-    "MM": 2.00,
-    "RU": 2.95,
-    "TR": 2.80,
-    "UA": 2.15,
-    "SG": 4.90,
-    "HK": 4.85,
-    "TW": 4.40,
-    "MY": 2.85,
-}
-
-RENT_RATIO: Dict[str, float] = {
-    "US": 0.35,
-    "CH": 0.38,
-    "NO": 0.35,
-    "SE": 0.33,
-    "DK": 0.34,
-    "GB": 0.36,
-    "DE": 0.32,
-    "FR": 0.30,
-    "IT": 0.28,
-    "ES": 0.30,
-    "PT": 0.28,
-    "GR": 0.26,
-    "PL": 0.28,
-    "CZ": 0.30,
-    "HU": 0.26,
-    "RO": 0.24,
-    "AU": 0.33,
-    "NZ": 0.32,
-    "CA": 0.34,
-    "JP": 0.30,
-    "KR": 0.28,
-    "SG": 0.32,
-    "HK": 0.38,
-    "TW": 0.26,
-    "CN": 0.28,
-    "IN": 0.22,
-    "BR": 0.25,
-    "MX": 0.24,
-    "AR": 0.26,
-    "CO": 0.24,
-    "CL": 0.24,
-    "PE": 0.22,
-    "ZA": 0.23,
-    "NG": 0.30,
-    "KE": 0.28,
-    "EG": 0.24,
-    "TH": 0.22,
-    "VN": 0.20,
-    "ID": 0.22,
-    "PH": 0.25,
-    "PK": 0.20,
-    "BD": 0.18,
-    "TR": 0.24,
-    "RU": 0.22,
-    "UA": 0.20,
-}
-
-FOOD_RATIO: Dict[str, float] = {
-    "US": 0.12,
-    "CH": 0.14,
-    "NO": 0.13,
-    "SE": 0.12,
-    "DK": 0.12,
-    "GB": 0.11,
-    "DE": 0.11,
-    "FR": 0.13,
-    "IT": 0.13,
-    "ES": 0.12,
-    "PT": 0.13,
-    "GR": 0.12,
-    "PL": 0.15,
-    "CZ": 0.14,
-    "HU": 0.14,
-    "RO": 0.16,
-    "AU": 0.11,
-    "NZ": 0.12,
-    "CA": 0.11,
-    "JP": 0.12,
-    "KR": 0.12,
-    "SG": 0.11,
-    "HK": 0.12,
-    "TW": 0.11,
-    "CN": 0.15,
-    "IN": 0.18,
-    "BR": 0.14,
-    "MX": 0.15,
-    "AR": 0.16,
-    "CO": 0.15,
-    "CL": 0.14,
-    "PE": 0.16,
-    "ZA": 0.14,
-    "NG": 0.25,
-    "KE": 0.24,
-    "EG": 0.18,
-    "TH": 0.16,
-    "VN": 0.18,
-    "ID": 0.18,
-    "PH": 0.20,
-    "PK": 0.20,
-    "BD": 0.22,
-    "TR": 0.16,
-    "RU": 0.16,
-    "UA": 0.18,
-}
-
-TAX_ESTIMATES: Dict[str, float] = {
-    "US": 0.24,
-    "CH": 0.22,
-    "NO": 0.30,
-    "SE": 0.32,
-    "DK": 0.36,
-    "GB": 0.25,
-    "DE": 0.30,
-    "FR": 0.28,
-    "IT": 0.30,
-    "ES": 0.24,
-    "PT": 0.25,
-    "GR": 0.24,
-    "PL": 0.18,
-    "CZ": 0.16,
-    "HU": 0.15,
-    "RO": 0.10,
-    "AU": 0.27,
-    "NZ": 0.24,
-    "CA": 0.26,
-    "JP": 0.23,
-    "KR": 0.17,
-    "SG": 0.10,
-    "HK": 0.10,
-    "TW": 0.12,
-    "CN": 0.15,
-    "IN": 0.13,
-    "BR": 0.17,
-    "MX": 0.16,
-    "AR": 0.20,
-    "CO": 0.15,
-    "CL": 0.15,
-    "PE": 0.12,
-    "ZA": 0.22,
-    "NG": 0.10,
-    "KE": 0.14,
-    "EG": 0.10,
-    "TH": 0.10,
-    "VN": 0.10,
-    "ID": 0.10,
-    "PH": 0.10,
-    "PK": 0.05,
-    "BD": 0.07,
-    "TR": 0.15,
-    "RU": 0.13,
-    "UA": 0.12,
-}
-
-DEFAULT_BIG_MAC = 3.50
-DEFAULT_RENT = 0.30
-DEFAULT_FOOD = 0.14
-DEFAULT_TAX = 0.15
-
-BME_BRACKETS = [
-    (500, 0.00, "Gratis (solo Auto-Favorito)"),
-    (2000, 0.01, "1% del ingreso bruto atribuible"),
-    (5000, 0.03, "3% del ingreso bruto atribuible"),
-    (10000, 0.05, "5% del ingreso bruto atribuible"),
-    (float("inf"), 0.10, "10% del ingreso bruto atribuible"),
-]
-
-# Tabla plana de precios corporativos (alternativa simplificada al BME)
-# Una empresa puede optar por esta tabla O por el sistema BME, el que sea menor.
-FLAT_PRICE_TABLE: list = [
-    (0, 100_000, 0, "Open Source gratuito"),
-    (100_000, 1_000_000, 500, "Licencia Individual/Startup"),
-    (1_000_000, 10_000_000, 2_500, "Licencia PYME"),
-    (10_000_000, 100_000_000, 10_000, "Licencia Corporativa"),
-    (100_000_000, 1_000_000_000, 50_000, "Licencia Enterprise"),
-    (1_000_000_000, float("inf"), 0.001, "Licencia Oligarca (0.1% facturacion anual, min $100K)"),
-]
-
-# Cuota de sostenimiento para proyectos huerfanos
-ORPHAN_FUND_RATE = 0.05  # 5% de cada licencia va al Fondo de Sostenibilidad
-
-# Diezmo Comercial sin Compliance (Art. 4.0)
-# Empresas que usan RNS en VM privadas, SaaS o backend sin contrato de compliance
-FLAT_PRICE_COMMERCIAL_NO_COMPLIANCE: list = [
-    (0, 1_000_000, 0.005, "0.5% del Margen Bruto Operativo"),
-    (1_000_000, 10_000_000, 0.01, "1% del Margen Bruto Operativo"),
-    (10_000_000, 100_000_000, 0.02, "2% del Margen Bruto Operativo"),
-    (100_000_000, float("inf"), 0.03, "3% del Margen Bruto Operativo"),
-]
-
-# FRN Orphan Fund rate
-ORPHAN_FUND_RATE_COMMERCIAL = 0.05  # 5% de cada pago comercial al Fondo
-
-
-class BigMacCalculator:
-    @staticmethod
-    def big_mac_price(country: str) -> float:
-        return BIG_MAC_INDEX.get(country.upper(), DEFAULT_BIG_MAC)
-
-    @staticmethod
-    def disposable_income_bme(
-        monthly_income_usd: float,
-        residence_country: str,
-        income_country: Optional[str] = None,
-    ) -> float:
-        res = residence_country.upper()
-        big_mac = BigMacCalculator.big_mac_price(res)
-        rent_r = RENT_RATIO.get(res, DEFAULT_RENT)
-        food_r = FOOD_RATIO.get(res, DEFAULT_FOOD)
-        tax_r = TAX_ESTIMATES.get(res, DEFAULT_TAX)
-
-        costs = monthly_income_usd * (rent_r + food_r + tax_r)
-        disposable = max(monthly_income_usd - costs, 0)
-        return disposable / big_mac if big_mac > 0 else 0
-
-    @staticmethod
-    def get_tax_bracket(bme: float) -> tuple:
-        for threshold, rate, label in BME_BRACKETS:
-            if bme < threshold:
-                return (rate, label, bme)
-        return (0.10, BME_BRACKETS[-1][2], bme)
-
-
-class LicenseGenerator:
-    BASE_THRESHOLD_USD = 1_000_000
-    BASE_SME_THRESHOLD_USD = 250_000
-    BASE_NONPROFIT_THRESHOLD_USD = 100_000
-    POOR_DEV_THRESHOLD_MXN = 20_000
-
-    def __init__(
-        self,
-        developer_name: str = "",
-        project_name: str = "",
-        github_repo: str = "",
-        jubilee_year: Optional[int] = None,
-        std_version: bool = False,
-    ):
-        self.developer_name = developer_name
-        self.project_name = project_name
-        self.github_repo = github_repo
-        self.jubilee_year = jubilee_year
-        self.std_version = std_version
-
-    def get_localized_thresholds(self, country_code: str) -> Dict:
-        factor = 1.0
-        if country_code.upper() in BIG_MAC_INDEX:
-            factor = BIG_MAC_INDEX[country_code.upper()] / BIG_MAC_INDEX.get("US", 5.69)
-        factor = max(factor, 0.3)
-
-        bm_price_usd = BIG_MAC_INDEX.get(country_code.upper(), DEFAULT_BIG_MAC)
-        poor_dev_usd = (self.POOR_DEV_THRESHOLD_MXN / 55) * (
-            bm_price_usd / BIG_MAC_INDEX.get("MX", 3.19)
-        )
-
-        bme_brackets_display = []
-        for threshold, rate, label in BME_BRACKETS:
-            bme_in_usd = threshold * bm_price_usd
-            bme_brackets_display.append(
-                {
-                    "bme": threshold,
-                    "tasa": f"{rate * 100:.0f}%",
-                    "equivalente_usd_mensual": f"${bme_in_usd:,.0f}",
-                    "label": label,
-                }
-            )
-
-        return {
-            "ingresos_brutos_alto": self.BASE_THRESHOLD_USD * factor,
-            "ingresos_brutos_pyme": self.BASE_SME_THRESHOLD_USD * factor,
-            "nonprofit_max": self.BASE_NONPROFIT_THRESHOLD_USD * factor,
-            "poor_dev_usd": poor_dev_usd,
-            "big_mac_price_usd": bm_price_usd,
-            "bme_brackets": bme_brackets_display,
-            "ppa_factor": factor,
-        }
-
-    def generate_license(self, country_code: str = "US") -> str:
-        t = self.get_localized_thresholds(country_code)
-        bm_price = t["big_mac_price_usd"]
-        brackets = t["bme_brackets"]
-
-        brackets_text = ""
-        for b in brackets:
-            brackets_text += (
-                f"  - Hasta {b['bme']} BME (~${b['equivalente_usd_mensual']}/mes "
-                f"en {country_code.upper()}): **{b['label']}**\n"
-            )
-
-                # STD header badge
-        std_tag = " [VERSION STD]" if self.std_version else ""
-        jubilee_note = ""
-        next_jubilee_year = datetime.now().year + 7
-        if self.jubilee_year:
-            next_jubilee_year = self.jubilee_year + 7
-            jubilee_note = f"\n\n### Proximo Jubileo: {next_jubilee_year} (desde v{self.jubilee_year})"
-
-        bula_price = t["poor_dev_usd"] * 12
-        bula_price_high = t["ingresos_brutos_alto"] * 0.10
-
-        return f"""# RERUM NOVARUM STATUTO (RNS) v5.0{std_tag}
+# RERUM NOVARUM STATUTO (RNS) v5.0 [VERSION STD]
 ## *Open To Open Source, Closed to Oligarchs*
 ## *El trabajador merece su salario*
 
@@ -435,13 +78,13 @@ El software libre no es software esclavo.
 
 - **"Software"**: El programa, biblioteca o codigo objeto de este Statuto, incluyendo
   codigo fuente y binarios.
-- **"Desarrollador"**: {self.developer_name or "[Nombre del desarrollador]"}, titular
+- **"Desarrollador"**: Concilio de Salamanca, titular
   de los derechos de autor del Software.
-- **"Proyecto"**: {self.project_name or "[Nombre del proyecto]"}.
+- **"Proyecto"**: MDE Skill Modulos.
 - **"Usuario"**: Cualquier persona o entidad que use, modifique o distribuya el Software.
 - **"Big Mac Equivalent (BME)"**: Unidad de medida del poder adquisitivo real. Un BME
   equivale al precio de una Big Mac en el pais de residencia del Usuario.
-  Precio de referencia en {country_code.upper()}: ${bm_price:.2f} USD = 1 BME.
+  Precio de referencia en MX: $3.19 USD = 1 BME.
 - **"Kilowatt Equivalent (kWE)"**: Metrica alternativa de poder adquisitivo medida en
   kilovatios-hora (kWh) que un salario minimo puede adquirir. 1 kWE = 1 kWh al precio
   industrial local. El umbral de pobreza se fija en **salario minimo G20 x 3 en kWE**.
@@ -451,9 +94,9 @@ El software libre no es software esclavo.
   (fuente no publicada) durante ese periodo. Solo se puede adquirir **UNA Bula
   por proyecto** en toda su historia.
 - **"Ingreso Disponible Mensual"**: Ingreso bruto mensual del Usuario, menos:
-  - Renta promedio local (~{RENT_RATIO.get(country_code.upper(), 0.30) * 100:.0f}% del ingreso en {country_code.upper()})
-  - Alimentacion basica (~{FOOD_RATIO.get(country_code.upper(), 0.14) * 100:.0f}% del ingreso en {country_code.upper()})
-  - Impuestos estimados (~{TAX_ESTIMATES.get(country_code.upper(), 0.15) * 100:.0f}% del ingreso en {country_code.upper()})
+  - Renta promedio local (~24% del ingreso en MX)
+  - Alimentacion basica (~15% del ingreso en MX)
+  - Impuestos estimados (~16% del ingreso en MX)
 - **"Margen Bruto Operativo"**: Ingresos directos atribuibles al Software, MENOS:
   - Costos de hardware existente (servidores, almacenamiento, ancho de banda).
   - Costos de personal humano directamente vinculado.
@@ -463,7 +106,7 @@ El software libre no es software esclavo.
   Esto evita la **estrategia Jeff Bezos** (declarar perdidas operativas eternas
   mientras se extrae valor real).
 - **"PYME"**: Empresa con menos de 100 empleados y ventas anuales inferiores a
-  ${t["ingresos_brutos_pyme"]:,.0f} USD (ajustado segun PPA local).
+  $140,158 USD (ajustado segun PPA local).
 - **"Oligarca Tecnologico"**: Entidad con valor de mercado superior a $1,000M USD,
   o que extrae mas de $100M USD anuales de software de codigo abierto sin retribuir
   proporcionalmente a los mantenedores.
@@ -526,7 +169,7 @@ Si un Usuario comercial necesita modificaciones, mejoras o integracion del Softw
 **3.3 Auto-Favorito en GitHub (Diezmo Digital Minimo para Usuarios Gratuitos)**
 Todo Usuario que se beneficie del Software sin retribucion economica reconoce la
 deuda moral de otorgar el *star* en GitHub como gesto minimo de gratitud.
-Si el Proyecto esta en GitHub{f" ({self.github_repo})" if self.github_repo else ""},
+Si el Proyecto esta en GitHub (github.com/anomalyco/opencode),
 el Usuario se compromete a marcarlo como favorito. Cuesta cero dolares y salda la
 deuda de reconocimiento. Compartir, forkear o mencionar el proyecto tambien son
 actos validos de restitucion moral.
@@ -537,14 +180,14 @@ El Software es de uso irrestricto, gratuito y perpetuo SIN DERECHO A SOPORTE par
 - Desarrolladores independientes cuyo poder adquisitivo sea inferior al umbral de
   pobreza: **salario minimo del G20 multiplicado por 3**, medido en **Big Macs**
   (BME) o en **Kilowatts-hora (kWE)** como metrica de densidad energetica.
-  En {country_code.upper()}, esto equivale a ~{t["poor_dev_usd"]:,.0f} USD/mes.
+  En MX, esto equivale a ~364 USD/mes.
 - Proyectos de codigo abierto bajo cualquier licencia aprobada por OSI o FSF,
   siempre que el proyecto no cobre por el uso del Software en si.
 - Instituciones educativas y organizaciones sin animo de lucro con presupuesto inferior
-  a ${t["nonprofit_max"]:,.0f} USD anuales.
+  a $56,063 USD anuales.
 - Cooperativas y proyectos de infraestructura publica.
 - Empresas de economia fisica cuyos ingresos brutos anuales no superen
-  ${t["ingresos_brutos_alto"]:,.0f} USD.
+  $560,633 USD.
 
 ### 4. Deber de Retribucion ("Diezmo Tecnologico")
 
@@ -579,7 +222,12 @@ significativamente mayor.
 
 **4.1 Escala Impositiva con Compliance (1% a 10%)**
 
-{brackets_text}
+  - Hasta 500 BME (~$$1,595/mes en MX): **Gratis (solo Auto-Favorito)**
+  - Hasta 2000 BME (~$$6,380/mes en MX): **1% del ingreso bruto atribuible**
+  - Hasta 5000 BME (~$$15,950/mes en MX): **3% del ingreso bruto atribuible**
+  - Hasta 10000 BME (~$$31,900/mes en MX): **5% del ingreso bruto atribuible**
+  - Hasta inf BME (~$$inf/mes en MX): **10% del ingreso bruto atribuible**
+
 
 **4.2 Base de Calculo: Margen Bruto Operativo**
 El diezmo se calcula sobre el Margen Bruto Operativo, NO sobre los ingresos brutos.
@@ -622,14 +270,14 @@ para financiar mantenedores de infraestructura critica y repositorios huerfanos.
 
 **4.5 Pago en codigo o en licencia**
 Para empresas con Margen Bruto Operativo anual inferior a
-${t["ingresos_brutos_alto"]:,.0f} USD, el Usuario podra optar por:
+$560,633 USD, el Usuario podra optar por:
 - Contribuir codigo aprobado al proyecto original (al menos 5% del esfuerzo total de
   desarrollo), o
 - Abonar el porcentaje correspondiente segun su BME.
 
 **4.6 Tramo corporativo**
 Para empresas con Margen Bruto Operativo anual igual o superior a
-${t["ingresos_brutos_alto"]:,.0f} USD, el Usuario abonara el porcentaje de su tramo BME,
+$560,633 USD, el Usuario abonara el porcentaje de su tramo BME,
 con un minimo del 5%.
 
 **4.7 Modelo Deuda para Startups (0% Interes Real)**
@@ -645,7 +293,7 @@ operacion pueden acogerse al **Modelo Deuda**:
 **4.8 Modelo WinRAR para PYMEs**
 Las PYMEs establecidas podran utilizar el Software sin pago inicial durante los
 primeros 18 meses. Transcurrido ese periodo, si la PYME ha superado los
-${t["ingresos_brutos_pyme"]:,.0f} USD de ingresos anuales vinculados, debera:
+$140,158 USD de ingresos anuales vinculados, debera:
 - Adquirir una Bula (Articulo 14), o
 - Acogerse al plan de credito al desarrollo (Articulo 4.5), o
 - Negociar un acuerdo de pagos atrasados bajo el modelo WinRAR (Articulo 7).
@@ -815,7 +463,7 @@ El Jubileo persigue:
   tomen el relevo cuando el ciclo natural del proyecto lo requiera.
 
 **11.4 Proximo Jubileo**
-El proximo Jubileo de este proyecto ocurre en {next_jubilee_year}.
+El proximo Jubileo de este proyecto ocurre en 2032.
 
 ### 12. De la Liberacion por Abandono (Clausula del Cuidado Pastoral)
 
@@ -888,13 +536,13 @@ la cultura y el conocimiento durante decadas.
 **14.3 Precio de la Bula: % de Ingresos Anuales de la Division**
 El precio de la Bula se calcula como un **porcentaje de los ingresos anuales de la
 division o linea de negocio** que utiliza el Software:
-- **Desarrollador independiente** (BME < 500): ${t["poor_dev_usd"] * 3:.0f} USD
+- **Desarrollador independiente** (BME < 500): $1091 USD
   (equivalente a 3 meses de ingreso disponible local).
 - **PYME** (BME 500-5000): 2% de los ingresos anuales de la division × 7.
 - **Corporacion** (BME > 5000): 5% de los ingresos anuales de la division × 7.
 - **Oligarca Tecnologico**: 10% de los ingresos anuales de la division × 7,
-  con un minimo de ${t["ingresos_brutos_alto"] * 0.50:.0f} USD × 7 =
-  ${t["ingresos_brutos_alto"] * 0.50 * 7:.0f} USD.
+  con un minimo de $280316 USD × 7 =
+  $1962214 USD.
 
 **14.4 Destino de los Fondos de Bulas**
 El 100% de los ingresos por Bulas se destina al **Fondo de Sostenibilidad**,
@@ -1010,7 +658,7 @@ del Desarrollador original del Software.
 
 ---
 
-*Statuto generado el {datetime.now().strftime("%Y-%m-%d")} para {country_code.upper()}.
+*Statuto generado el 2026-06-29 para MX.
 Redactado bajo el espiritu de la Meta Dialectica Escolastica (MDE), la Escuela de
 Salamanca, y la Doctrina Social de la Iglesia, en la ciudad virtual de Salamanca,
 por el Magister Determinans del Concilio.*
@@ -1026,53 +674,3 @@ o realizar un pago, visita:
 
 El 5% de cada pago se destina al Fondo de Sostenibilidad para mantener
 infraestructura critica y rescatar repositorios huerfanos.
-"""
-
-    def save_license(self, path: str, country_code: str = "US"):
-        content = self.generate_license(country_code)
-        Path(path).write_text(content, encoding="utf-8")
-        return path
-
-    @classmethod
-    def list_countries(cls):
-        return sorted(BIG_MAC_INDEX.keys())
-
-    @staticmethod
-    def flat_price(annual_revenue: float) -> dict:
-        """Calcula el precio segun la tabla plana corporativa.
-
-        Args:
-            annual_revenue: Facturacion anual de la empresa en USD.
-
-        Returns:
-            dict con 'price_usd', 'tier', 'tier_name', 'orphan_contribution'
-        """
-        for lo, hi, price, name in FLAT_PRICE_TABLE:
-            if lo <= annual_revenue < hi:
-                if isinstance(price, float) and price < 1:
-                    price = max(annual_revenue * price, 100_000)
-                return {
-                    "price_usd": price,
-                    "tier": name,
-                    "tier_name": name,
-                    "orphan_contribution": round(price * ORPHAN_FUND_RATE, 2),
-                }
-        return {"price_usd": 0, "tier": "Gratis", "tier_name": "Gratis", "orphan_contribution": 0}
-
-    @classmethod
-    def calculate_bme(
-        cls,
-        monthly_income_usd: float,
-        residence_country: str,
-        income_country: Optional[str] = None,
-    ) -> dict:
-        bme = BigMacCalculator.disposable_income_bme(
-            monthly_income_usd, residence_country, income_country
-        )
-        rate, label, _ = BigMacCalculator.get_tax_bracket(bme)
-        return {
-            "bme": round(bme, 1),
-            "tasa": f"{rate * 100:.0f}%",
-            "categoria": label,
-            "big_mac_precio": BigMacCalculator.big_mac_price(residence_country),
-        }

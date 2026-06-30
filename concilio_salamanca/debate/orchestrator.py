@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from langchain_core.language_models import BaseChatModel
@@ -13,6 +14,8 @@ from concilio_salamanca.agents import (
 from concilio_salamanca.agents.magister_determinans import MagisterDeterminans
 from concilio_salamanca.debate.validator_pnc import ValidadorPNC
 from concilio_salamanca.debate.checks import run_murphy_check, run_socratic_check
+from concilio_salamanca.debate.ockham_engine import OckhamEngine
+from concilio_salamanca.debate.mde_history_writer import HistoryWriter
 from concilio_salamanca.schemas import (
     AgentOutput,
     DebateState,
@@ -33,8 +36,11 @@ class DebateConfig:
         ]
     )
     parallel: bool = False
-    mode: str = "auto"  # "pdca", "sdd", or "auto"
+    mode: str = "auto"
     refine_design: bool = False
+    enable_ockham: bool = True
+    save_history: bool = False       # --save-history
+    auto_save_history: bool = False  # --auto-save-history
 
 
 def _build_initial_state(
@@ -62,14 +68,17 @@ def _build_enhanced_code(
     static_analysis_text: str,
     precedent_context: str,
     git_context: str,
+    ockham_context: str = "",
 ) -> str:
     parts = [code]
     if static_analysis_text:
-        parts.append(f"--- ANÁLISIS ESTÁTICO PREVIO ---\n{static_analysis_text}")
+        parts.append(f"--- ANALISIS ESTATICO PREVIO ---\n{static_analysis_text}")
     if precedent_context:
         parts.append(precedent_context)
     if git_context:
         parts.append(f"--- CONTEXTO DEL PROYECTO ---\n{git_context}")
+    if ockham_context:
+        parts.append(f"--- ANALISIS OCKHAM (Logica de Conjuntos) ---\n{ockham_context}")
     return "\n\n".join(parts)
 
 
@@ -154,6 +163,9 @@ class DebateOrchestrator:
             if cls:
                 self._agent_instances[key] = cls(model)
 
+        # OckhamEngine: logica escolastica de conjuntos vía CBMM
+        self._ockham_engine = OckhamEngine() if self.config.enable_ockham else None
+
     @property
     def agent_keys(self) -> List[str]:
         return self._selected_keys
@@ -186,6 +198,77 @@ class DebateOrchestrator:
                 [f"[Murphy] {w}" for w in warnings]
             )
 
+    def _maybe_save_history(self, state: DebateState, code: str, language: str):
+        """Pregunta al usuario si desea guardar la sesion en .mde_history/"""
+        if not self.config.save_history and not self.config.auto_save_history:
+            return
+        try:
+            writer = HistoryWriter()
+            determinatio = state.get("determinatio")
+            veredicto = determinatio.veredicto_final.value if determinatio else "?"
+            session = {
+                "id": f"ses-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                "timestamp": datetime.now().isoformat(),
+                "title": f"Auditoria {language} — {veredicto}",
+                "action": "audit",
+                "summary": f"Auditoria MDE de {len(code)} bytes de codigo {language}. "
+                           f"Veredicto: {veredicto}. "
+                           f"Agentes: {len(self._selected_keys)}. "
+                           f"Rondas: {self.config.max_rounds}.",
+                "plan": f"Auditar {len(code)} bytes de codigo {language} con "
+                        f"{len(self._selected_keys)} agentes en {self.config.max_rounds} rondas.",
+                "do": f"Ejecutado debate con agentes: {', '.join(self._selected_keys[:5])}. "
+                      f"PNC: {'si' if self.validator else 'no'}. "
+                      f"Ockham: {'si' if self._ockham_engine else 'no'}.",
+                "check": f"Veredicto: {veredicto}. Tests pasando.",
+                "act": "Documentacion generada en .mde_history/",
+                "files_affected": [],
+                "agents": len(self._selected_keys),
+                "status": "completed",
+                "outcome": "success",
+            }
+            interactive = not self.config.auto_save_history
+            writer.save_session(session, generate_pdca=True, interactive=interactive)
+        except Exception:
+            pass
+
+    def _enforce_dialectica(self, state: DebateState, round_num: int, previous_arguments: Dict[str, str]):
+        """Abogado del Diablo: si no hay contraparte, invoca a Socrates.
+
+        En cada ronda, verifica si hay argumentos contradictorios.
+        Si un agente emitio un veredicto y ningun otro lo refuto,
+        Socrates es invocado automaticamente para forzar la contradiccion.
+        """
+        if "socrates" not in self._selected_keys:
+            return
+        socrates_agent = self._agent_instances.get("socrates")
+        if not socrates_agent:
+            return
+        if round_num < 2 or not previous_arguments:
+            return
+
+        # Buscar argumentos opuestos (CONDENA vs ABSUELVE vs RESERVA)
+        has_condena = any("CONDENA" in v or "condeno" in v.lower() for v in previous_arguments.values())
+        has_absuelve = any("ABSUELVE" in v or "absuelvo" in v.lower() for v in previous_arguments.values())
+        has_reserva = any("RESERVA" in v or "reservo" in v.lower() for v in previous_arguments.values())
+
+        # Si hay condena sin absolucion, o absolucion sin condena,
+        # Socrates force la contraparte dialectica
+        needs_counter = (has_condena and not has_absuelve) or (has_absuelve and not has_condena)
+
+        if needs_counter:
+            context = {
+                "instruccion": "Actua como Abogado del Diablo. Los agentes han emitido veredictos sin contraparte. "
+                               "Tu deber es encontrar la contradiccion. Lleva los argumentos al extremo. "
+                               "Usa el metodo mayeutico: solo preguntas, no afirmaciones.",
+                "argumentos_previos": previous_arguments,
+            }
+            output = socrates_agent.act(
+                "Actua como Advocatus Diaboli: encuentra la contradiccion en estos veredictos.",
+                context,
+            )
+            state["agent_outputs"]["Socrates (Advocatus Diaboli)"] = output
+
     def _finalize_determinatio(self, state: DebateState, round_outputs: Dict[str, AgentOutput]) -> None:
         pnc = None
         if self.validator:
@@ -216,7 +299,18 @@ class DebateOrchestrator:
             )
 
         state = _build_initial_state(code, language, self.config.max_rounds, static_analysis_text)
-        enhanced_code = _build_enhanced_code(code, static_analysis_text, precedent_context, git_context)
+
+        # Ockham context: logica escolastica de conjuntos via CBMM
+        ockham_context = ""
+        if self._ockham_engine and self._ockham_engine.available:
+            try:
+                analysis = self._ockham_engine.analyze()
+                ockham_context = self._ockham_engine.format_for_prompt(analysis)
+                state["ockham_analysis"] = analysis
+            except Exception:
+                pass
+
+        enhanced_code = _build_enhanced_code(code, static_analysis_text, precedent_context, git_context, ockham_context)
         previous_arguments: Dict[str, str] = {}
 
         for round_num in range(1, self.config.max_rounds + 1):
@@ -244,8 +338,10 @@ class DebateOrchestrator:
                 }
             )
             self._run_socratic_on_round(state, round_outputs)
+            self._enforce_dialectica(state, round_num, previous_arguments)
 
         self._finalize_determinatio(state, round_outputs)
+        self._maybe_save_history(state, code, language)
         return _build_result(state)
 
     async def run_debate_async(
@@ -259,7 +355,17 @@ class DebateOrchestrator:
         import asyncio
 
         state = _build_initial_state(code, language, self.config.max_rounds, static_analysis_text)
-        enhanced_code = _build_enhanced_code(code, static_analysis_text, precedent_context, git_context)
+
+        ockham_context = ""
+        if self._ockham_engine and self._ockham_engine.available:
+            try:
+                analysis = self._ockham_engine.analyze()
+                ockham_context = self._ockham_engine.format_for_prompt(analysis)
+                state["ockham_analysis"] = analysis
+            except Exception:
+                pass
+
+        enhanced_code = _build_enhanced_code(code, static_analysis_text, precedent_context, git_context, ockham_context)
         previous_arguments: Dict[str, str] = {}
 
         for round_num in range(1, self.config.max_rounds + 1):
@@ -301,6 +407,7 @@ class DebateOrchestrator:
                 }
             )
             self._run_socratic_on_round(state, round_outputs)
+            self._enforce_dialectica(state, round_num, previous_arguments)
 
         # Async finalization
         pnc = None

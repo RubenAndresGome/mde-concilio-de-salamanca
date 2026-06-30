@@ -331,7 +331,7 @@ def test_pnc_validator_parse():
 
 # --- Agent registry tests ---
 def test_agent_registry_has_all_agents():
-    assert len(AGENT_REGISTRY) == 38
+    assert len(AGENT_REGISTRY) == 39
     expected_keys = [
         "promotor",
         "defensor",
@@ -379,7 +379,7 @@ def test_resolve_agents_mixed():
 
 def test_resolve_agents_todos():
     result = resolve_agents(["todos"])
-    assert len(result) == 38
+    assert len(result) == 39
 
 
 def test_resolve_agents_no_duplicates():
@@ -414,6 +414,7 @@ def test_agent_groups_exist():
     assert "clean_code" in AGENT_GROUPS
     assert "proceso" in AGENT_GROUPS
     assert "delineatio" in AGENT_GROUPS
+    assert "logici" in AGENT_GROUPS
 
 
 # --- Orchestrator with custom agents ---

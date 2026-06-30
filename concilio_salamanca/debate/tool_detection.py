@@ -2,6 +2,7 @@
 Detección e instalación de herramientas externas:
 - Spec-Kit CLI (`specify`) — Spec-Driven Development
 - Open-Design CLI (`od`) — Generative UI/UX design
+- Codebase Memory MCP (`codebase-memory-mcp`) — Knowledge graph
 """
 
 from __future__ import annotations
@@ -80,6 +81,46 @@ def install_opendesign_mcp() -> bool:
     return False
 
 
+def detect_cbmm() -> Dict[str, bool]:
+    """Detect Codebase Memory MCP CLI availability."""
+    return {"available": detect_cli("codebase-memory-mcp")}
+
+
+def install_cbmm() -> bool:
+    """Install Codebase Memory MCP via official install script.
+
+    Returns True if installation succeeded.
+    """
+    if detect_cli("codebase-memory-mcp"):
+        return True
+    import platform
+    system = platform.system().lower()
+    try:
+        if system == "windows":
+            print("  Descargando e instalando codebase-memory-mcp (Windows)...")
+            script_url = "https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.ps1"
+            result = subprocess.run(
+                ["powershell", "-Command",
+                 f"Invoke-WebRequest -Uri '{script_url}' -OutFile '$env:TEMP\\install_cbmm.ps1'; "
+                 f"& '$env:TEMP\\install_cbmm.ps1'"],
+                capture_output=True, text=True, timeout=120,
+            )
+        else:
+            print("  Descargando e instalando codebase-memory-mcp...")
+            result = subprocess.run(
+                ["bash", "-c",
+                 "curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash"],
+                capture_output=True, text=True, timeout=120,
+            )
+        if result.returncode == 0:
+            print("  codebase-memory-mcp instalado correctamente.")
+            return True
+        print(f"  Error instalando CBMM: {result.stderr[-300:]}")
+    except Exception as e:
+        print(f"  Error instalando CBMM: {e}")
+    return False
+
+
 def check_prerequisites(verbose: bool = True) -> Dict[str, bool]:
     """Check all prerequisites and offer installation where possible.
 
@@ -105,6 +146,12 @@ def check_prerequisites(verbose: bool = True) -> Dict[str, bool]:
     else:
         status["od_mcp"] = False
 
+    # Codebase Memory MCP
+    cbmm = detect_cbmm()
+    status["cbmm"] = cbmm["available"]
+    if verbose:
+        print(f"  CBMM (grafo):    {'✓ disponible' if status['cbmm'] else '✗ no encontrado'}")
+
     # Attempt install if missing
     if not status["specify"]:
         if verbose:
@@ -115,5 +162,10 @@ def check_prerequisites(verbose: bool = True) -> Dict[str, bool]:
         if verbose:
             print("  Intentando instalar MCP de Open-Design...")
         status["od_mcp"] = install_opendesign_mcp()
+
+    if not status["cbmm"]:
+        if verbose:
+            print("  Intentando instalar CBMM...")
+        status["cbmm"] = install_cbmm()
 
     return status

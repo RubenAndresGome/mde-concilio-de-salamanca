@@ -1,45 +1,20 @@
-# RERUM NOVARUM STATUTO (RNS) v4.1
+# RERUM NOVARUM STATUTO (RNS) v5.0
+## MDE Politeia Conciliar de Salamanca
 ## *Open To Open Source, Closed to Oligarchs*
 ## *El trabajador merece su salario*
 
+### Novedades v5.0
+- **Art. 4.0**: Diezmo Comercial sin Compliance (0.5%-3%) para VM privadas, SaaS y backend
+- **Art. 5.4**: Derivative Work sin Fork = Montaje de Software, recargo del 50%
+- **FRN_ROADMAP.md**: Manifiesto de la Politeia de Desarrolladores
+
 ### Fuentes Doctrinales
-- **Decalogo** (Exodo 20:1-17) — VII: No robaras. X: No codiciaras.
-- **Rerum Novarum** (Leon XIII, 1891) — El trabajo no es una mercancia.
-- **Quadragesimo Anno** (Pio XI, 1931) — Principio de subsidiariedad.
-- **Centesimus Annus** (Juan Pablo II, 1991) — Destino universal de los bienes.
-- **Laborem Exercens** (Juan Pablo II, 1981) — El trabajo es la clave de la cuestion social.
-- **Escuela de Salamanca** — Precio justo, bien comun, derecho de gentes.
-- **Compendio de Doctrina Social de la Iglesia** (2004) — Economia al servicio de la persona.
+- **Decalogo** (Exodo 20:1-17)
+- **Rerum Novarum** (Leon XIII, 1891) · **Quadragesimo Anno** (Pio XI, 1931)
+- **Centesimus Annus** (Juan Pablo II, 1991) · **Laborem Exercens** (Juan Pablo II, 1981)
+- **Escuela de Salamanca** · **Compendio de Doctrina Social de la Iglesia**
 
-> *"El trabajador merece su salario"* (Lucas 10:7)
-> *"No retendras el salario del jornalero en tu casa hasta la manana"* (Levitico 19:13)
-
-Ver la implementacion completa en `concilio_salamanca/license_generator.py`
-
+Ver el Statuto completo (17 articulos) en `LICENSE.md` o generar:
 ```bash
-# Generar licencia adaptada a tu pais:
-concilio license --country MX --dev "Tu Nombre" --project "Tu Proyecto"
-concilio license --country MX --dev "Tu Nombre" --project "Tu Proyecto" --jubilee 2024 --std
+concilio license --country MX --dev "Autor" --project "Proyecto" --std
 ```
-
-**Articulos esenciales (17):**
-1. Definiciones — Margen Bruto Operativo, prorrateo por importancia, kWE
-2. Open Source gratuito para individuos y PYMEs
-3. Salario, no limosna — 3 opciones de contratacion
-4. Diezmo Tecnologico (1%-10%) sobre Margen Bruto Operativo
-5. Auditoria CI + sistema de recompensas (30% de la multa al delator)
-6. Anti-Parasitaria — pro-trabajo humano
-7. Retroactividad Modelo WinRAR — negociacion asistida
-8. Excomunion Digital
-9. Compatibilidad — RNS no busca OSI approval
-10. No-Remuneracion = No-Soporte
-11. Jubileo del Codigo cada 7 anos
-12. Liberacion por Abandono si soporte cae <50%
-13. Gobernanza STD por consenso del 60%
-14. Bulas — 1 por proyecto, precio = % ingresos de division
-15. Fundacion RNS — sede en Sur Global, hermana de FSF, voto por meritos
-16. Mediacion → Arbitraje → Tribunales (3 pasos)
-17. Disposiciones Finales — articulos irrenunciables
-
-Ver el Statuto completo en `concilio_salamanca/license_generator.py` o generar uno
-personalizado con `concilio license --help`.

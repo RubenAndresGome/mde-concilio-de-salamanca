@@ -116,6 +116,7 @@ def main():
 
     if args.check_tools:
         from concilio_salamanca.debate.tool_detection import check_prerequisites
+        from concilio_salamanca.debate.mde_history_writer import HistoryWriter
 
         print("=== Verificacion de herramientas externas ===")
         status = check_prerequisites(verbose=True)
@@ -123,6 +124,21 @@ def main():
         for tool, ok in status.items():
             icon = "✓" if ok else "✗"
             print(f"  {icon} {tool}: {'disponible' if ok else 'no disponible'}")
+
+        print()
+        print("=== .mde_history ===")
+        writer = HistoryWriter()
+        checks = writer.verify_integrity()
+        for check, ok in checks.items():
+            icon = "✓" if ok else "✗"
+            print(f"  {icon} {check}: {'OK' if ok else 'FALLO'}")
+        return
+
+    if args.history_stats:
+        from concilio_salamanca.debate.mde_history_writer import HistoryWriter
+
+        writer = HistoryWriter()
+        print(writer.stats())
         return
 
     if args.list_model_prices:
@@ -513,6 +529,9 @@ def main():
         parallel=parallel_execution,
         mode=debate_mode,
         refine_design=args.refine_design,
+        enable_ockham=args.ockham,
+        save_history=args.save_history,
+        auto_save_history=args.auto_save_history,
     )
     orchestrator = DebateOrchestrator(model=model, magister_model=magister_model, config=config)
     result = orchestrator.run_debate(

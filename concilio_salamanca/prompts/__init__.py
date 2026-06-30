@@ -38,6 +38,7 @@ from concilio_salamanca.prompts.system_prompts import (
     ARQUIMEDES,
     CUSTOS_IMPACTI,
     MAGISTER_DELINEATIONIS,
+    OCKHAMDEV,
 )
 
 __all__ = [
@@ -81,4 +82,5 @@ __all__ = [
     "ARQUIMEDES",
     "CUSTOS_IMPACTI",
     "MAGISTER_DELINEATIONIS",
+    "OCKHAMDEV",
 ]

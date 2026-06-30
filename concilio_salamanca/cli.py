@@ -189,6 +189,36 @@ def setup_parser() -> argparse.ArgumentParser:
         help="Priorizar modelos locales (Ollama) sobre APIs cloud",
     )
     parser.add_argument(
+        "--ockham",
+        action="store_true",
+        default=True,
+        help="Activar agente OckhamDev + analisis de logica de conjuntos via CBMM",
+    )
+    parser.add_argument(
+        "--no-ockham",
+        action="store_false",
+        dest="ockham",
+        help="Desactivar analisis Ockham (ahorra tiempo si no hay CBMM instalado)",
+    )
+    parser.add_argument(
+        "--save-history",
+        action="store_true",
+        default=False,
+        help="Guardar sesion en .mde_history/ al finalizar (pregunta interactiva)",
+    )
+    parser.add_argument(
+        "--auto-save-history",
+        action="store_true",
+        default=False,
+        help="Guardar sesion en .mde_history/ automaticamente sin preguntar",
+    )
+    parser.add_argument(
+        "--history-stats",
+        action="store_true",
+        default=False,
+        help="Mostrar estadisticas de .mde_history/ y salir",
+    )
+    parser.add_argument(
         "--cache-stats",
         action="store_true",
         help="Mostrar estadisticas del cache de silogismos",

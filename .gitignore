@@ -1,4 +1,4 @@
-﻿# Bytecode / Python artifacts
+# Bytecode / Python artifacts
 __pycache__/
 *.py[cod]
 *$py.class
@@ -13,6 +13,7 @@ pip-wheel-metadata/
 
 # Virtual environments
 .venv/
+.venv*/
 venv/
 env/
 ENV/
@@ -51,6 +52,8 @@ veredictos/
 # IDE / OS files
 .vscode/
 .idea/
+.cursor/
+.gemini/
 *.swp
 *.swo
 *.swn

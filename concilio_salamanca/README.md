@@ -1,17 +1,16 @@
-# Concilio de Salamanca — Auditoria de Codigo por Meta Dialectica Escolastica
+# MDE Politeia Conciliar de Salamanca — Auditoria de Codigo por Meta Dialectica Escolastica
 
 > *"Ninguna linea de codigo sera desplegada sin haber sido sometida al tribunal de la razon."*
 
-Sistema multi-agente de auditoria de codigo basado en logica aristotelico-tomista. **38 agentes IA** especializados debaten usando silogismos formales y emiten un veredicto estructurado bajo el Principio de No Contradiccion. Multi-proveedor LLM con ranking automatico calidad-precio-disponibilidad.
+Sistema multi-agente de auditoria de codigo basado en logica aristotelico-tomista. **39 agentes IA** especializados debaten usando silogismos formales, logica de predicados y teoria de conjuntos. Multi-proveedor LLM con ranking automatico calidad-precio-disponibilidad vía ModelRanker.
 
 [![CI](https://github.com/anomalyco/opencode/actions/workflows/ci.yml/badge.svg)](https://github.com/anomalyco/opencode/actions)
-[![PyPI version](https://img.shields.io/pypi/v/concilio-salamanca)](https://pypi.org/project/concilio-salamanca/)
 [![Python 3.11+](https://img.shields.io/pypi/pyversions/concilio-salamanca)](https://pypi.org/project/concilio-salamanca/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: RNS 5.0](https://img.shields.io/badge/License-Rerum_Novarum_5.0-purple.svg)](LICENSE)
 
 ---
 
-## Instalación
+## Instalacion
 
 ```bash
 pip install concilio-salamanca
@@ -29,6 +28,7 @@ pip install concilio-salamanca[anthropic,groq,ollama]
 | **PyPI** | `pip install concilio-salamanca` |
 | **opencode** | Skill auto-detectada al pedir "auditar", "revisar codigo", "code review" |
 | **Open-Design** | `od mcp install opencode` — prototipos visuales |
+| **CBMM** | `codebase-memory-mcp install` — grafo de conocimiento |
 | **Spec-Kit** | `specify init` — flujo SDD integrado |
 | **OpenRouter** | `OPENROUTER_API_KEY` — 339+ modelos |
 | **CI/CD** | `--output json` para pipelines |
@@ -50,85 +50,61 @@ pip install concilio-salamanca[anthropic,groq,ollama]
 
 El **ModelRanker** selecciona automaticamente el mejor modelo calidad-precio-disponibilidad. Usa `--list-model-prices` para ver la tabla completa.
 
-### Enrutamiento Cognitivo (Economía Física Cognitiva)
-Para proyectos grandes, es financieramente insostenible correr agentes debatiendo en modelos Deluxe. 
-El Concilio soporta la división del trabajo, asignando modelos locales/baratos para el debate (la Potencia) y modelos de alto razonamiento para el veredicto (el Acto):
+### Enrutamiento Cognitivo
+
 ```bash
-python concilio_salamanca/main.py --file app.js \
+concilio --file app.js \
   --provider-obreros deepseek --model-obreros deepseek-chat \
   --provider-magister openai --model-magister gpt-4o
 ```
 
 ---
 
-## Instalacion
-
-```bash
-git clone <repo>
-cd "MDE Skill Modulos"
-pip install -r concilio_salamanca/requirements.txt
-```
-
-Configurar API key (elige un proveedor):
-
-```powershell
-# OpenAI
-setx OPENAI_API_KEY "sk-..."
-
-# DeepSeek
-setx DEEPSEEK_API_KEY "sk-..."
-
-# Ollama (local, sin key)
-ollama pull llama3
-```
-
----
-
 ## Uso rapido
 
-### Auditoria basica
+### Auditoria basica (escolastica)
 
 ```bash
-python concilio_salamanca/main.py --file app.js --agents escolasticos
+concilio --file app.js --agents escolasticos
 ```
 
 ### Auditoria ejecutiva (informe reducido)
 
 ```bash
-python concilio_salamanca/main.py --file app.tsx --mode ejecutivo --agents pragmaticales
+concilio --file app.tsx --mode ejecutivo --agents pragmaticos
 ```
 
 ### Auditoria de seguridad
 
 ```bash
-python concilio_salamanca/main.py --file server.js --agents seguridad,promotor --rounds 3
+concilio --file server.js --agents seguridad,promotor --rounds 3
 ```
 
-### Escaneo rapido de anti-patrones (sin LLM)
+### Auditoria Clean Code (SOLID)
 
 ```bash
-python concilio_salamanca/main.py audit --file app.js
+concilio --file app.py --agents clean_code
 ```
 
-### Con DeepSeek
+### Auditoria de coherencia ontologica (OckhamDev + CBMM)
 
 ```bash
-python concilio_salamanca/main.py --file app.py --provider deepseek --model deepseek-chat --agents escolasticos
+concilio --file app.py --agents logici --ockham
 ```
 
-### Con Ollama local (gratis)
+### Escaneo rapido de anti-patrones (sin LLM, gratuito)
 
 ```bash
-python concilio_salamanca/main.py --file app.py --provider ollama --model llama3 --agents pragmaticos
+concilio audit --file app.js --domain seguridad
 ```
 
 ---
 
-## Agentes del Concilio (28)
+## Agentes del Concilio (39)
 
 ### Escolasticos (tribunal clasico)
 
-| Clave | Agente | Especialidad / Rol |
+| Clave | Agente | Especialidad |
 |---|---|---|
 | `promotor` | Promotor Fidei | Acusador: busca vulnerabilidades, fallos, privaciones del ser |
 | `defensor` | Defensor Causae Finalis | Defiende el codigo por su causa final y estructura formal |
@@ -163,53 +139,63 @@ python concilio_salamanca/main.py --file app.py --provider ollama --model llama3
 | `sistemas` | Architectus Systematis | Escalabilidad, CAP, backpressure, idempotencia |
 | `iot` | Architectus Siliconis | Firmware, RTOS, BLE/LoRa, power profiling |
 
-### Dialécticos, Metodologías y Nuevos Agentes
+### Dialecticos, Metodologia y Logica
 
-| Clave | Agente | Enfoque / Filosofía |
+| Clave | Agente | Enfoque |
 |---|---|---|
-| `socrates` | Socrates | Mayeútica, interrogación destructiva de supuestos |
-| `scrum` | Scrum Master | DoD, velocidad de entrega, retrospectivas y empirismo ágil |
-| `sixsigma` | Six Sigma | Control de calidad DMAIC, Poka-Yoke, reducción de varianza |
-| `llull` | Ramon Llull | Grafos lógicos, lógica combinatoria (*Ars Magna*) |
-| `bacon` | Roger Bacon | Empirismo radical, validación experimental |
-| `vitoria` | Francisco de Vitoria | Ius Gentium, derechos del usuario, accesibilidad (WCAG) |
-| `ratio` | Ratio Studiorum | Pedagogía del código, legibilidad y estructura limpia |
+| `socrates` | Socrates | Mayeutica: interrogacion destructiva de supuestos |
+| `scrum` | Scrum Master | DoD, velocidad, retrospectivas, empirismo agil |
+| `sixsigma` | Six Sigma | DMAIC, Poka-Yoke, control de calidad |
+| `llull` | Ramon Llull | Grafos logicos, logica combinatoria (*Ars Magna*) |
+| `bacon` | Roger Bacon | Empirismo radical, validacion experimental |
+| `vitoria` | Francisco de Vitoria | Ius Gentium, derechos del usuario, WCAG |
+| `ratio` | Ratio Studiorum | Pedagogia del codigo, legibilidad |
+| **`ockham`** | **OckhamDev** | **Navaja de la No-Contradiccion: operaciones de conjunto, silogismos, PNC** |
 
-### Meta-Agentes (Optimizadores de Token)
+### Clean Code, Diseno y Proceso
 
-| Clave | Agente | Rol Metodológico |
+| Clave | Agente | Enfoque |
 |---|---|---|
-| `ponytail` | Ponytail/YAGNI | Escalera de la Pereza, evitar código innecesario |
-| `graphify` | Graphify | Detección de acoplamientos, god nodes y dependencias |
-| `rtk` | RTK | Filtrado de ruido contextual en refutaciones cruzadas |
-| `telemetry` | Telemetry | Medición e informe del consumo de tokens y llamadas a la API |
+| `arquimedes` | Arquimedes (Magister Artis) | SOLID, Clean Code, Boy Scout Rule |
+| `custos_impacti` | Custos Impacti | Analisis de impacto, refactorizacion segura |
+| `magister_processus` | Magister Processus Integri | PDCA + SDD (Spec-Diven), mediciones |
+| `magister_delineationis` | Magister Delineationis | Arquitecto Visual: prototipos Open-Design, DESIGN.md |
+
+### Meta-Agentes (Token Optimizers)
+
+| Clave | Agente | Rol |
+|---|---|---|
+| `ponytail` | Ponytail/YAGNI | Escalera de la Pereza, evitar codigo innecesario |
+| `graphify` | Graphify | Deteccion de acoplamientos, god nodes |
+| `rtk` | RTK | Filtrado de ruido contextual en refutaciones |
+| `telemetry` | Telemetry | Medicion de consumo de tokens y llamadas a API |
+
+### Seguridad Ofensiva + Filosofia Aplicada
+
+| Clave | Agente | Rol |
+|---|---|---|
+| `redteam` | Red Team Coordinator | Planificador de cadenas de ataque |
+| `pentest` | PenTest+ Auditor | Metodologias PTES, CompTIA |
+| `abuser` | Abuser Story Generator | Historias de abuso desde perspectiva del atacante |
+| `causas` | Analista Causal Aristotelico | 4 causas de cada vulnerabilidad |
+| `leibniz` | Optimista Leibniziano | Principio de razon suficiente |
+| `nietzsche` | Vitalista Nietzscheano | Anti-dogma, transvaloracion tecnica |
 
 ### Grupos predefinidos
 
 ```bash
-# Todos los escolasticos
---agents escolasticos
-
-# Pragmaticos
---agents pragmaticos
-
-# Tecnicos especializados
---agents tecnicos
-
-# Auditoria de produccion IA
---agents ia_produccion
-
-# Seguridad completa
---agents seguridad_completa
-
-# Embebidos/IoT
---agents embebidos
-
-# Todos (28 agentes)
---agents todos
-
-# Combinacion personalizada
---agents promotor,seguridad,linus,korotkevich
+--agents escolasticos    # El tribunal clasico (5)
+--agents pragmaticos     # Ingenieria pura (3)
+--agents tecnicos        # Especialistas (6)
+--agents clean_code      # SOLID + Impacto + Proceso (3)
+--agents logici          # Ockham + Socrates + Bacon + Leibniz (4)
+--agents delineatio      # Diseno Visual + Derechos + Pedagogia (3)
+--agents red_team        # Seguridad ofensiva (4)
+--agents ia_produccion   # Auditoria de produccion IA (6)
+--agents seguridad_completa  # Seguridad completa (6)
+--agents embebidos       # IoT/Embebidos (4)
+--agents token_optimizers    # Optimizacion de tokens (4)
+--agents todos           # Los 39 agentes
 ```
 
 ---
@@ -221,85 +207,75 @@ python concilio_salamanca/main.py --file app.py --provider ollama --model llama3
 | `--file`, `-f` | Archivo a auditar |
 | `--code`, `-c` | Codigo directo como string |
 | `--agents`, `-a` | Agentes (claves o grupo) |
-| `--provider` | Proveedor LLM |
+| `--provider` | Proveedor LLM (openai, deepseek, anthropic, groq, ollama, openrouter) |
 | `--model`, `-m` | Modelo especifico |
 | `--provider-magister` | Proveedor para el Juez (ej. `openai`) |
 | `--model-magister` | Modelo para el Juez (ej. `gpt-4o`) |
-| `--provider-obreros` | Proveedor para los debatientes (ej. `ollama`) |
-| `--model-obreros` | Modelo para los debatientes (ej. `llama3`) |
+| `--provider-obreros` | Proveedor para los debatientes (ej. `deepseek`) |
+| `--model-obreros` | Modelo para los debatientes (ej. `deepseek-chat`) |
 | `--rounds`, `-r` | Rondas de debate (default: 2) |
-| `--mode` | `escolastico` (default) o `ejecutivo` |
-| `--output`, `-o` | `text` (default), `json`, `markdown` |
+| `--mode` | `escolastico`, `ejecutivo`, `sdd`, `pdca`, `auto` |
+| `--output`, `-o` | `text`, `json`, `markdown`, `mermaid` |
 | `--verbose`, `-v` | Reporte trinivel de silogismos |
 | `--no-pnc` | Deshabilitar validacion PnC |
+| `--ockham` | Activar OckhamDev + CBMM (logica de conjuntos) |
+| `--no-ockham` | Desactivar OckhamDev |
+| `--list-model-prices` | Tabla de precios de modelos |
+| `--check-tools` | Detectar herramientas externas |
+| `--config` | Archivo de configuracion YAML |
 
 ### Subcomandos
 
 ```bash
-# Escaneo rapido de anti-patrones (sin LLM, gratuito)
-python main.py audit --file app.js --domain seguridad
+# Auditoria de anti-patrones (sin LLM)
+concilio audit --file app.js --domain seguridad
 
-# Generar licencia Rerum Novarum
-python main.py license --country MX --dev "Nombre" --project "Proyecto" --repo github.com/...
+# Licencia Rerum Novarum Statuto v4.1
+concilio license --country MX --dev "Nombre" --project "Proyecto" --repo github.com/...
+concilio license --country MX --dev "Nombre" --project "Proyecto" --jubilee 2024 --std
+concilio license --register --name "Proyecto" --repo "https://github.com/..."
+concilio license --bula --dev "Empresa" --project "Proyecto" --revenue 5000000
+concilio license --pay --dev "Empresa" --project "Proyecto" --amount 2500
 
-# Calcular precio justo (Big Mac Index)
-python main.py bme --income 3000 --residence MX --income-country US
+# Precio justo (Big Mac Index)
+concilio bme --income 3000 --residence MX --income-country US
 
-# Listar agentes
-python main.py --list-agents
-
-# Listar proveedores LLM
-python main.py --list-providers
-
-# Listar anti-patrones
-python main.py --list-anti-patrones
+# Listados
+concilio --list-agents
+concilio --list-providers
+concilio --list-anti-patrones
+concilio --list-model-prices
+concilio --check-tools
 ```
 
 ---
 
-## Formato de salida
+## Licencia Rerum Novarum Statuto v4.1
 
-### Escolastico (default)
+El proyecto se distribuye bajo el **Rerum Novarum Statuto** (RNS v4.1), una licencia de commons compensado con 17 articulos basada en el Decalogo, la Doctrina Social de la Iglesia y la Escuela de Salamanca.
 
+**Articulos esenciales (17):**
+1. Definiciones — Margen Bruto Operativo, prorrateo por importancia, kWE
+2. Open Source gratuito para individuos y PYMEs
+3. Salario, no limosna — 3 opciones de contratacion
+4. Diezmo Tecnologico (1%-10%) sobre Margen Bruto Operativo + tabla plana corporativa
+5. Auditoria CI + sistema de recompensas (30% de la multa al delator)
+6. Anti-Parasitaria — pro-trabajo humano (Exodo 20:15)
+7. Retroactividad Modelo WinRAR — negociacion asistida
+8. Excomunion Digital
+9. Compatibilidad — RNS no busca OSI approval
+10. No-Remuneracion = No-Soporte
+11. Jubileo del Codigo cada 7 anos
+12. Liberacion por Abandono si soporte cae <50%
+13. Gobernanza STD por consenso del 60%
+14. Bulas — 1 por proyecto, precio = % ingresos de division, 7 anos
+15. Fundacion RNS — sede en Sur Global, hermana FSF, voto por meritos, SCRUM
+16. Mediacion → Arbitraje → Tribunales (3 pasos)
+17. Disposiciones Finales — articulos irrenunciables
+
+```bash
+concilio license --help
 ```
-QUAESTIO: Planteamiento formal del problema
-VIDETUR: Argumentos que favorecen al codigo
-SED CONTRA: Argumentos que condenan al codigo
-RESPONDEO: Sintesis razonada del Magister
-DETERMINATIO CODICI: Veredicto final y codigo corregido
-```
-
-### Ejecutivo (`--mode ejecutivo`)
-
-Informe tecnico con tabla de metricas: veredicto, agentes participantes, rondas, contradicciones detectadas.
-
-### JSON (`--output json`)
-
-Para integracion con CI/CD, GitHub Actions, o sistemas automatizados.
-
----
-
-## Anti-patrones
-
-El sistema detecta automaticamente 15 anti-patrones (AP-001 a AP-015):
-
-| ID | Anti-patron | Dominio |
-|---|---|---|
-| AP-001 | XSS por innerHTML sin sanitizar | Seguridad |
-| AP-002 | SQL Injection por concatenacion | Seguridad |
-| AP-003 | useEffect sin dependencias / bucles | Frontend |
-| AP-004 | Prop drilling excesivo | Frontend |
-| AP-005 | Estado derivado sin memoizacion | Rendimiento |
-| AP-006 | Callback hell / Pyramid of Doom | Backend |
-| AP-007 | API sin rate limiting | Seguridad |
-| AP-008 | Modal con z-index hardcodeado | Frontend |
-| AP-009 | N+1 queries en ORMs | Rendimiento |
-| AP-010 | Manejo de errores con catch vacio | Backend |
-| AP-011 | Tabla sin paginacion | Rendimiento |
-| AP-012 | Dashboard con polling sin debounce | Frontend |
-| AP-013 | Secrets en codigo fuente | Seguridad |
-| AP-014 | Botones sin estado de carga | Frontend |
-| AP-015 | useState para estado derivable | Frontend |
 
 ---
 
@@ -307,41 +283,11 @@ El sistema detecta automaticamente 15 anti-patrones (AP-001 a AP-015):
 
 Cada silogismo emitido por los agentes se reduce a tres paradigmas formales:
 
-| Nivel | Paradigma | Ejemplo | Fuente |
-|---|---|---|---|
-| 1. Escolastico | Mnemotecnia A/E/I/O | `AAA-1` = Barbara | Aristoteles, Primeros Analiticos |
-| 2. Conjuntos | Algebra de Boole | `S SUBSET P`, `s(1-p)=0` | Boole, Laws of Thought |
-| 3. Predicados | Logica de primer orden | `forall x. S(x) -> P(x)` | Frege, Begriffsschrift |
-
-Esto permite cachear conclusiones y detectar silogismos equivalentes aunque usen terminos distintos, ahorrando tokens de LLM.
-
----
-
-## Licencia Rerum Novarum v2.0
-
-El proyecto incluye su propia licencia de software basada en el indice Big Mac:
-
-- **Devs pobres** (< 20,000 MXN/mes): **gratis**, solo pide estrella en GitHub
-- **Open source**: gratis
-- **Escala 1% a 10%** segun poder adquisitivo real medido en Big Macs
-- **Geo-arbitraje**: si ganas en USD y vives en MX, pagas mas
-- **Auto-Favorito**: dar estrella en GitHub es el diezmo digital minimo
-
-Generar: `python main.py license --country MX --dev "Tu Nombre" --repo github.com/...`
-
----
-
-## VS Code
-
-El proyecto incluye `.vscode/tasks.json` con 7 tareas:
-
-- `Ctrl+Shift+P` > `Tasks: Run Task`
-- Concilio: Auditar archivo abierto (Escolastico)
-- Concilio: Auditar archivo abierto (Ejecutivo rapido)
-- Concilio: Auditar archivo abierto (Seguridad)
-- Concilio: Escaneo rapido de anti-patrones
-- Concilio: Auditar con DeepSeek
-- Concilio: Listar agentes disponibles
+| Nivel | Paradigma | Ejemplo |
+|---|---|---|
+| 1. Escolastico | Mnemotecnia A/E/I/O | `AAA-1` = Barbara |
+| 2. Conjuntos | Algebra de Boole | `S ⊂ P`, `s(1-p)=0` |
+| 3. Predicados | Logica de primer orden | `∀x. S(x) → P(x)` |
 
 ---
 
@@ -349,17 +295,57 @@ El proyecto incluye `.vscode/tasks.json` con 7 tareas:
 
 ```
 concilio_salamanca/
-├── SKILL.md                     # Definicion para opencode/Antigravity
-├── config.yaml                  # Configuracion (proveedor, modelo, rondas)
-├── main.py                      # CLI principal simplificado
-├── cli.py                       # Definición de argumentos de CLI
-├── license_generator.py         # Generador LPRN v2.0 (Big Mac Index)
-├── schemas.py                   # Modelos Pydantic
-├── agents/                      # Agentes dinámicos (base y cargador virtual)
-├── debate/                      # Orquestador, PnC, cache, formatters, voting, providers
-├── prompts/                     # 18 system prompts
-├── reference/                   # Anti-patrones, componentes, templates
-└── tests/                       # 68 tests (unitarios e integración)
+├── __init__.py                 # Package init (v1.0.0)
+├── SKILL.md                    # Skill definition for opencode
+├── README.md                   # Project documentation
+├── config.yaml                 # Configuration (provider, model, rounds, weights, budget)
+├── main.py                     # CLI entry point
+├── cli.py                      # Argument parser
+├── license_generator.py        # RNS v4.1 generator (BME, Bulas, Registry)
+├── schemas.py                  # Pydantic models + DebateState
+│
+├── agents/                     # Dynamic agent registry (39 agents)
+│   ├── __init__.py             # AGENT_DEFS, AGENT_GROUPS, resolve_agents()
+│   ├── base.py                 # AgentFromPrompt, cache integration
+│   └── magister_determinans.py # Magister judge + parse_determinatio()
+│
+├── debate/                     # Orchestration, providers, logic
+│   ├── orchestrator.py         # DebateOrchestrator (sync + async, CBMM, Ockham)
+│   ├── providers.py            # Multi-provider factory + ModelRanker
+│   ├── ockham_engine.py        # OckhamDev: set operations, PNC, silogisms
+│   ├── model_pricing.py        # 22 model catalog + price table
+│   ├── rns_registry.py         # RNS Registry (projects, Bulas, payments)
+│   ├── send_graph.py           # LangGraph parallel debate
+│   ├── validator_pnc.py        # PnC formal validation
+│   ├── formal_verification.py  # Z3 SMT solver integration
+│   ├── street_solver           # Syllogism cache (trinivel compression)
+│   ├── static_analysis.py      # Tree-sitter AST + regex fallback
+│   ├── checks.py               # Socratic/Murphy checks
+│   ├── git_history.py          # Git log + .mde_history reader
+│   ├── mcp_design_client.py    # Open-Design MCP client
+│   ├── tool_detection.py       # External tool detection (CBMM, Spec-Kit, OD)
+│   ├── formatters.py, voting.py, precedents.py
+│   ├── loop_invariants.py, mcp_client.py
+│   └── syllogism_cache.json   # Runtime cache
+│
+├── prompts/                    # 36+ system prompts
+│   ├── system_prompts.py       # All agent prompts (OCKHAMDEV, MAGISTER_DELINEATIONIS, ...)
+│   └── __init__.py             # Re-exports
+│
+├── reference/                  # Reference materials
+│   ├── anti_patrones.py        # 15 anti-patterns catalog
+│   ├── componentes.py          # Component reference specs
+│   ├── determinatio_template.py # Output templates
+│   ├── genesis_iberoamerica_extract.md  # Universal concepts
+│   └── arquitectura_maestria_software.md # Clean Code treatise
+│
+├── templates/
+│   └── DESIGN.md               # Brand contract for Magister Delineationis
+│
+├── dashboard/app.py            # Streamlit web dashboard
+├── scripts/                    # Utility scripts
+├── tests/                      # 75 tests (unit + integration)
+└── docs/historial_markdowns/   # Archived documentation
 ```
 
 ---
@@ -367,6 +353,6 @@ concilio_salamanca/
 ## Tests
 
 ```bash
-py -m pytest
-# 68 passed
+py -m pytest concilio_salamanca/tests/ -v
+# 75 passed
 ```
