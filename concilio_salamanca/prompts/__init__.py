@@ -39,6 +39,7 @@ from concilio_salamanca.prompts.system_prompts import (
     CUSTOS_IMPACTI,
     MAGISTER_DELINEATIONIS,
     OCKHAMDEV,
+    LECTOR_EXTERNUS,
 )
 
 __all__ = [
@@ -83,4 +84,5 @@ __all__ = [
     "CUSTOS_IMPACTI",
     "MAGISTER_DELINEATIONIS",
     "OCKHAMDEV",
+    "LECTOR_EXTERNUS",
 ]

@@ -210,12 +210,32 @@
       ],
       "tokens_used": 10000,
       "outcome": "success"
+    },
+    {
+      "id": "ses-headroom-website-downloader-integration",
+      "timestamp": "2026-07-01T07:50:00",
+      "action": "refactor",
+      "summary": "Integracion Headroom (compresion de contexto) y Website-downloader (clonador offline) + LectorExternus como agente inquisidor de fuentes externas.",
+      "files_affected": [
+        "concilio_salamanca/prompts/system_prompts.py",
+        "concilio_salamanca/prompts/__init__.py",
+        "concilio_salamanca/agents/__init__.py",
+        "concilio_salamanca/agents/base.py",
+        "concilio_salamanca/requirements.txt",
+        "concilio_salamanca/tools/website_downloader_wrapper.py",
+        "concilio_salamanca/tests/test_website_downloader.py",
+        "concilio_salamanca/tests/test_agents.py"
+      ],
+      "tokens_used": 28000,
+      "outcome": "success",
+      "tests": 80,
+      "agents": 40
     }
   ],
   "metrics": {
-    "total_sessions": 11,
-    "total_agents": 39,
-    "total_tests": 75,
+    "total_sessions": 13,
+    "total_agents": 40,
+    "total_tests": 80,
     "active_groups": 24,
     "license": "RNS v4.1",
     "tools": [
@@ -223,7 +243,9 @@
       "open-design",
       "spec-kit",
       "markitdown",
-      "ollama"
+      "ollama",
+      "headroom",
+      "website-downloader"
     ],
     "providers": [
       "openai",
@@ -233,11 +255,11 @@
       "ollama",
       "openrouter"
     ],
-    "files_indexed": 37,
-    "python_lines": 9500,
-    "markdown_lines": 3500
+    "files_indexed": 39,
+    "python_lines": 9800,
+    "markdown_lines": 3600
   },
-  "pdca_counter": 13,
+  "pdca_counter": 14,
   "cross_references": {
     "PDCA_002": "PDCA_002_Fase_5_Compatibilidad_Muchos_LLM_-_model_weights_en_config.yaml_resolve_provider.md",
     "PDCA_003": "PDCA_003_OpenRouter_(339+_modelos)_+_Ollama_local_(gemma4_deepseek-r1_qwen2.5-coder)_+_Mo.md",
@@ -250,6 +272,7 @@
     "PDCA_010": "PDCA_010_Fase_1+2_Tabla_plana_corporativa_($0-$50K_ano)_+_BME_como_opcion_de_descuento._R.md",
     "PDCA_011": "PDCA_011_MarkItDown_instalado_y_PDF_Genesis_Iberoamerica_extraido._Filtrado_a_197_lineas_.md",
     "PDCA_012": "PDCA_012_Integracion_codebase-memory-mcp_(CBMM_17.1k_stars)_+_Agente_OckhamDev_(Navaja_de.md",
-    "PDCA_013": "PDCA_013_Actualizacion_.mde_history__index.json_con_historial_completo_(11_sesiones)._SKI.md"
+    "PDCA_013": "PDCA_013_Actualizacion_.mde_history__index.json_con_historial_completo_(11_sesiones)._SKI.md",
+    "PDCA_014": "PDCA_014_Integracion_Headroom_compresion_contexto_y_Website-downloader_clonador_offline_LectorExternus.md"
   }
 }

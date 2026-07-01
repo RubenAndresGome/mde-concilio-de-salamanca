@@ -153,6 +153,23 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
 
         messages = self._build_messages(code, context)
 
+        # Headroom context compression integration
+        import os
+        if os.environ.get("HEADROOM_ENABLED", "false").lower() == "true" or len(str(messages)) > 10000:
+            try:
+                from headroom import compress
+                from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+                headroom_msgs = [{"role": "system" if m.type == "system" else ("user" if m.type == "human" else "assistant"), "content": m.content} for m in messages]
+                compressed_msgs = compress(headroom_msgs)
+                messages = [
+                    SystemMessage(content=m["content"]) if m["role"] == "system" else
+                    (HumanMessage(content=m["content"]) if m["role"] == "user" else AIMessage(content=m["content"]))
+                    for m in compressed_msgs
+                ]
+            except Exception as e:
+                import sys
+                sys.stderr.write(f"\n[ADVERTENCIA] Fallo compresion de Headroom: {e}\n")
+
         if max_tokens > 0:
             budget_instruction = (
                 f"RESTRICCION DE TOKENS: Tu respuesta no debe exceder aproximadamente "
@@ -195,6 +212,23 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
             return cached
 
         messages = self._build_messages(code, context)
+
+        # Headroom context compression integration
+        import os
+        if os.environ.get("HEADROOM_ENABLED", "false").lower() == "true" or len(str(messages)) > 10000:
+            try:
+                from headroom import compress
+                from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+                headroom_msgs = [{"role": "system" if m.type == "system" else ("user" if m.type == "human" else "assistant"), "content": m.content} for m in messages]
+                compressed_msgs = compress(headroom_msgs)
+                messages = [
+                    SystemMessage(content=m["content"]) if m["role"] == "system" else
+                    (HumanMessage(content=m["content"]) if m["role"] == "user" else AIMessage(content=m["content"]))
+                    for m in compressed_msgs
+                ]
+            except Exception as e:
+                import sys
+                sys.stderr.write(f"\n[ADVERTENCIA] Fallo compresion de Headroom: {e}\n")
 
         if max_tokens > 0:
             budget_instruction = (

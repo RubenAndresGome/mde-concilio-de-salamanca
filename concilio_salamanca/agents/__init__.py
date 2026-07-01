@@ -247,6 +247,12 @@ AGENT_DEFS = {
         "ockham_dev",
         "OckhamDev",
     ),
+    "lector_externus": (
+        "Lector Externus (Website Downloader)",
+        system_prompts.LECTOR_EXTERNUS,
+        "lector_externus",
+        "LectorExternus",
+    ),
 }
 
 AGENT_REGISTRY = {}
@@ -269,7 +275,7 @@ for key, (label, prompt, mod_name, class_name) in AGENT_DEFS.items():
 AGENT_GROUPS = {
     "todos": list(AGENT_REGISTRY.keys()),
     "escolasticos": ["promotor", "defensor", "doctor", "larouche", "leon_xiii"],
-    "pragmaticos": ["linus", "wozniak", "thompson"],
+    "pragmaticos": ["linus", "wozniak", "thompson", "lector_externus"],
     "eticos": ["stallman", "stroustrup"],
     "algoritmicos": ["korotkevich"],
     "tecnicos": ["auditor_dl", "seguridad", "mlops", "datos", "sistemas", "iot"],
@@ -307,7 +313,7 @@ AGENT_GROUPS = {
     "pedagogicos": ["ratio", "socrates"],
     "empiristas": ["bacon", "linus", "thompson"],
     "token_optimizers": ["ponytail", "rtk", "telemetry", "graphify"],
-    "red_team": ["redteam", "pentest", "abuser", "seguridad"],
+    "red_team": ["redteam", "pentest", "abuser", "seguridad", "lector_externus"],
     "filosofos_aplicados": ["leibniz", "nietzsche", "socrates", "causas"],
     "clean_code": ["arquimedes", "custos_impacti", "magister_processus"],
     "proceso": ["scrum", "sixsigma", "magister_processus"],

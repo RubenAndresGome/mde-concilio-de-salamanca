@@ -20,4 +20,6 @@ streamlit>=1.30.0
 # markitdown[pdf]      # para extraer PDFs en licencia RNS
 # beautifulsoup4       # para validador_kpi.py (MDE Frontend)
 # cssutils             # para validador_kpi.py (MDE Frontend)
+headroom>=0.1.0        # para compresión de tokens/contexto
+
 

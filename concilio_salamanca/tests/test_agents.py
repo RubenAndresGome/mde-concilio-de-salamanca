@@ -48,6 +48,7 @@ from concilio_salamanca.agents.abuser import AbuserStoryGenerator
 from concilio_salamanca.agents.causas import AnalistaCausal
 from concilio_salamanca.agents.leibniz import OptimistaLeibniziano
 from concilio_salamanca.agents.nietzsche import VitalistaNietzscheano
+from concilio_salamanca.agents.lector_externus import LectorExternus
 from concilio_salamanca.debate.orchestrator import DebateConfig, DebateOrchestrator
 from concilio_salamanca.debate.validator_pnc import ValidadorPNC
 from concilio_salamanca.license_generator import LicenseGenerator
@@ -289,6 +290,10 @@ def test_vitalista_nietzscheano():
     _test_agent(VitalistaNietzscheano)
 
 
+def test_lector_externus():
+    _test_agent(LectorExternus)
+
+
 def test_magister_parse():
     model = _mock_model()
     magister = MagisterDeterminans(model)
@@ -331,7 +336,7 @@ def test_pnc_validator_parse():
 
 # --- Agent registry tests ---
 def test_agent_registry_has_all_agents():
-    assert len(AGENT_REGISTRY) == 39
+    assert len(AGENT_REGISTRY) == 40
     expected_keys = [
         "promotor",
         "defensor",
@@ -379,7 +384,7 @@ def test_resolve_agents_mixed():
 
 def test_resolve_agents_todos():
     result = resolve_agents(["todos"])
-    assert len(result) == 39
+    assert len(result) == 40
 
 
 def test_resolve_agents_no_duplicates():
