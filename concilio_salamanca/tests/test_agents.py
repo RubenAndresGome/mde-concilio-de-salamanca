@@ -524,7 +524,7 @@ def test_geo_arbitrage():
 
     bme_mx_income_mx_residence = LicenseGenerator.calculate_bme(3000, "MX")
     bme_us_income_mx_residence = LicenseGenerator.calculate_bme(8000, "MX", "US")
-    bme_us_income_us_residence = LicenseGenerator.calculate_bme(8000, "US")
+    LicenseGenerator.calculate_bme(8000, "US")
 
     assert bme_us_income_mx_residence["bme"] > bme_mx_income_mx_residence["bme"]
     assert bme_us_income_mx_residence["tasa"] != "0%"
@@ -802,7 +802,7 @@ def test_providers():
     assert PROVIDERS["deepseek"]["env_key"] == "DEEPSEEK_API_KEY"
 
     info = get_provider_info("deepseek")
-    assert info["default_model"] == "deepseek-chat"
+    assert info["default_model"] == "deepseek-v4-flash"
 
     with pytest.raises(ValueError):
         get_provider_info("nonexistent")

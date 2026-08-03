@@ -25,7 +25,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 
 MDE_HISTORY_DIR = ".mde_history"
@@ -114,7 +114,6 @@ class HistoryWriter:
         """Genera el contenido markdown de un archivo PDCA."""
         pdca_id = f"PDCA_{pdca_num:03d}"
         title = session.get("title", session.get("summary", "Sin titulo"))[:80]
-        title_slug = title.replace(" ", "_").replace("—", "-").replace(",", "").replace(":", "").replace("/", "_")
 
         lines = [
             f"# {pdca_id} — {title}",
@@ -139,13 +138,13 @@ class HistoryWriter:
             "",
             "---",
             "",
-            f"## Plan (Objetivo)",
+            "## Plan (Objetivo)",
             "",
             session.get("plan", session.get("summary", "(no documentado)")),
             "",
             "---",
             "",
-            f"## Do (Implementacion)",
+            "## Do (Implementacion)",
             "",
             session.get("do", session.get("summary", "(no documentado)")),
             "",
@@ -165,7 +164,7 @@ class HistoryWriter:
         lines += [
             "---",
             "",
-            f"## Check (Validacion)",
+            "## Check (Validacion)",
             "",
             session.get("check", f"{session.get('tests', '?')} tests pasan. Outcome: {session.get('outcome', '?')}."),
             "",
@@ -337,7 +336,6 @@ class HistoryWriter:
         idx = self._load_index()
         sessions = idx.get("sessions", [])
         minimal = idx.get("minimal_sessions", [])
-        metrics = idx.get("metrics", {})
         cross_refs = idx.get("cross_references", {})
         pdca_files = sorted(self.seiton_dir.glob("PDCA_*.md"))
 

@@ -11,6 +11,30 @@ import argparse
 from typing import List
 
 
+def prompt_audit_level() -> int:
+    print("\nNivel de auditoria: 0=estatico, 1=economico, 2=normal, 3=pleno")
+    try:
+        value = input("Nivel [1] > ").strip() or "1"
+        return int(value) if value in {"0", "1", "2", "3"} else 1
+    except (EOFError, KeyboardInterrupt):
+        return 1
+
+
+def prompt_compute_policy() -> tuple[str, str]:
+    print("\nComputo: local, cloud o auto economico")
+    try:
+        policy = (input("Computo [auto] > ").strip().lower() or "auto")
+        if policy not in {"local", "cloud", "auto"}:
+            policy = "auto"
+        priority = "cost"
+        if policy == "cloud":
+            raw = input("Prioridad cloud: costo o calidad [costo] > ").strip().lower()
+            priority = "quality" if raw in {"calidad", "quality"} else "cost"
+        return policy, priority
+    except (EOFError, KeyboardInterrupt):
+        return "auto", "cost"
+
+
 def prompt_agents_interactive() -> List[str]:
     from concilio_salamanca.agents import AGENT_REGISTRY, AGENT_GROUPS
 
@@ -78,7 +102,7 @@ def setup_parser() -> argparse.ArgumentParser:
         help="Proveedor LLM exclusivo para el foro de agentes obreros",
     )
     parser.add_argument(
-        "--model-obreros", type=str, default=None, help="Modelo especifico para los agentes obreros (ej. deepseek-chat)"
+        "--model-obreros", type=str, default=None, help="Modelo especifico para los agentes obreros (ej. deepseek-v4-flash)"
     )
     parser.add_argument(
         "--base-url",
@@ -162,12 +186,32 @@ def setup_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--fast",
         action="store_true",
-        help="Modo rapido para CI/CD: 2 agentes, 1 ronda, ejecucion en paralelo",
+        help="Alias compatible de --audit-level 1",
+    )
+    parser.add_argument(
+        "--audit-level", type=int, choices=[0, 1, 2, 3], default=None,
+        help="0 estatico, 1 economico, 2 normal, 3 pleno",
+    )
+    parser.add_argument(
+        "--compute-policy", choices=["local", "cloud", "auto"], default=None,
+        help="Politica de computo: local, cloud o automatica economica",
+    )
+    parser.add_argument(
+        "--priority", choices=["cost", "quality"], default=None,
+        help="Prioridad de seleccion de modelo cloud",
+    )
+    parser.add_argument(
+        "--token-budget", type=int, default=None,
+        help="Presupuesto total de tokens; 0 significa sin techo adicional",
+    )
+    parser.add_argument(
+        "--non-interactive", action="store_true",
+        help="No formular preguntas; aplica politica economica segura",
     )
     parser.add_argument(
         "--config", type=str, default=None, help="Archivo de configuracion YAML"
     )
-    parser.add_argument("--api-key", type=str, default=None, help="API key de OpenAI")
+    parser.add_argument("--api-key", type=str, default=None, help="API key del proveedor elegido")
     parser.add_argument(
         "--save", "-s", type=str, default=None, help="Guardar veredicto en archivo"
     )
@@ -338,8 +382,36 @@ def setup_parser() -> argparse.ArgumentParser:
         help="Filtrar por dominio",
     )
 
-    dashboard_parser = subparsers.add_parser(
+    subparsers.add_parser(
         "dashboard", help="Lanzar el dashboard web en Streamlit"
+    )
+
+    subparsers.add_parser(
+        "mcp-serve", help="Iniciar el servidor MCP JSON-RPC por stdio"
+    )
+
+    install_parser = subparsers.add_parser(
+        "install", help="Instalar/configurar el Concilio para un agente de codigo"
+    )
+    install_parser.add_argument(
+        "--agent", type=str, default="opencode", choices=["opencode"],
+        help="Agente de codigo a configurar (default: opencode)",
+    )
+    install_parser.add_argument(
+        "--skip-cbmm", action="store_true", default=False,
+        help="No instalar Codebase Memory MCP",
+    )
+    install_parser.add_argument(
+        "--skip-tests", action="store_true", default=False,
+        help="No ejecutar self-test post-instalacion",
+    )
+    install_parser.add_argument(
+        "--uninstall", action="store_true", default=False,
+        help="Desinstalar configuracion MCP del Concilio",
+    )
+    install_parser.add_argument(
+        "--binary", type=str, default=None,
+        help="Ruta al binario concilio (si no esta en PATH)",
     )
 
     return parser

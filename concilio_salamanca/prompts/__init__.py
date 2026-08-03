@@ -64,7 +64,6 @@ __all__ = [
     "SOCRATES",
     "SCRUM_MASTER",
     "SIX_SIGMA",
-    "SOCRATES",
     "LLULL",
     "BACON",
     "VITORIA",

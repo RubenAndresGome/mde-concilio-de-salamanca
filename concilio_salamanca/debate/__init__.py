@@ -67,6 +67,12 @@ from concilio_salamanca.debate.formatters import (
     format_output_executive,
 )
 from concilio_salamanca.debate.voting import build_voting_table
+from concilio_salamanca.debate.formal_verification import FormalVerifier
+from concilio_salamanca.debate.loop_invariants import LoopInvariantEngine
+from concilio_salamanca.debate.mcp_client import MCPClientManager
+from concilio_salamanca.debate.audit_profiles import AuditProfile, get_audit_profile
+from concilio_salamanca.debate.compute_policy import ComputePolicyResolver, ComputeResolution
+from concilio_salamanca.debate.token_accountant import TokenAccountant
 
 __all__ = [
     "DebateConfig",
@@ -119,4 +125,12 @@ __all__ = [
     "format_output_sarif",
     "format_output_executive",
     "build_voting_table",
+    "FormalVerifier",
+    "LoopInvariantEngine",
+    "MCPClientManager",
+    "AuditProfile",
+    "get_audit_profile",
+    "ComputePolicyResolver",
+    "ComputeResolution",
+    "TokenAccountant",
 ]

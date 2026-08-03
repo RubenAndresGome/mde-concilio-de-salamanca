@@ -1,5 +1,4 @@
 from unittest.mock import MagicMock, patch
-import pytest
 from concilio_salamanca.tools.website_downloader_wrapper import WebsiteDownloaderWrapper
 
 def test_downloader_wget_available():

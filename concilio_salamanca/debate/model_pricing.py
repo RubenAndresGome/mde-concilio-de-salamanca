@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import os
-import subprocess
 from dataclasses import dataclass, field
+from datetime import date, datetime
 from typing import Dict, List, Optional, Tuple
 
 
@@ -10,9 +9,11 @@ from typing import Dict, List, Optional, Tuple
 # MODEL CATALOGUE —  Top ~40 models with known pricing and quality tiers
 # ---------------------------------------------------------------------------
 # Prices in USD per 1M tokens (input / output).
-# Quality is a subjective 1-10 score based on coding benchmarks + general
-# reasoning. Updated 2025-06.
+# Quality is a heuristic, never an absolute ranking.
 # ---------------------------------------------------------------------------
+
+CATALOGUE_UPDATED_AT = "2026-08-02"
+CATALOGUE_STALE_AFTER_DAYS = 30
 
 @dataclass
 class ModelSpec:
@@ -23,9 +24,21 @@ class ModelSpec:
     price_out_1m: float               # output $/MTok
     quality: int                      # 1-10 (10 = best)
     tags: List[str] = field(default_factory=list)  # "coding","reasoning","fast","vision",...
+    price_cache_hit_1m: float = 0.0
+    frontier: bool = False
 
 
 MODEL_CATALOGUE: Dict[str, ModelSpec] = {
+    "openai/gpt-5.6-terra": ModelSpec(
+        id="openai/gpt-5.6-terra", provider="openai", name="GPT-5.6 Terra",
+        price_in_1m=2.50, price_out_1m=15.0, price_cache_hit_1m=0.25,
+        quality=10, tags=["coding", "reasoning", "frontier"], frontier=True,
+    ),
+    "openai/gpt-5.6-sol": ModelSpec(
+        id="openai/gpt-5.6-sol", provider="openai", name="GPT-5.6 Sol",
+        price_in_1m=5.0, price_out_1m=30.0, price_cache_hit_1m=0.50,
+        quality=10, tags=["coding", "reasoning", "frontier"], frontier=True,
+    ),
     # ── Ollama local (gratis) ──────────────────────────────────────────
     "ollama/gemma4:e4b": ModelSpec(
         id="ollama/gemma4:e4b", provider="ollama",
@@ -63,20 +76,14 @@ MODEL_CATALOGUE: Dict[str, ModelSpec] = {
     # ── DeepSeek (China) ──────────────────────────────────────────────
     "deepseek/deepseek-v4-flash": ModelSpec(
         id="deepseek/deepseek-v4-flash", provider="deepseek",
-        name="DeepSeek V4 Flash", price_in_1m=0.09, price_out_1m=0.18,
-        quality=7, tags=["fast", "reasoning", "coding"],
+        name="DeepSeek V4 Flash", price_in_1m=0.14, price_out_1m=0.28,
+        quality=8, tags=["fast", "reasoning", "coding"], price_cache_hit_1m=0.0028,
     ),
-    "deepseek/deepseek-chat": ModelSpec(
-        id="deepseek/deepseek-chat", provider="deepseek",
-        name="DeepSeek V3", price_in_1m=0.20, price_out_1m=0.80,
-        quality=8, tags=["reasoning", "coding"],
+    "deepseek/deepseek-v4-pro": ModelSpec(
+        id="deepseek/deepseek-v4-pro", provider="deepseek",
+        name="DeepSeek V4 Pro", price_in_1m=0.435, price_out_1m=0.87,
+        quality=9, tags=["reasoning", "coding", "quality"], price_cache_hit_1m=0.003625,
     ),
-    "deepseek/deepseek-r1": ModelSpec(
-        id="deepseek/deepseek-r1", provider="deepseek",
-        name="DeepSeek R1", price_in_1m=0.70, price_out_1m=2.50,
-        quality=9, tags=["reasoning", "math"],
-    ),
-
     # ── Qwen / Alibaba (China) ────────────────────────────────────────
     "qwen/qwen-2.5-7b-instruct": ModelSpec(
         id="qwen/qwen-2.5-7b-instruct", provider="qwen",
@@ -228,12 +235,30 @@ class ModelRanker:
             return {}
 
     @staticmethod
-    def estimate_cost(model_id: str, input_tokens: int, output_tokens: int) -> float:
+    def catalogue_is_stale(today: Optional[date] = None) -> bool:
+        updated = datetime.strptime(CATALOGUE_UPDATED_AT, "%Y-%m-%d").date()
+        return ((today or date.today()) - updated).days > CATALOGUE_STALE_AFTER_DAYS
+
+    @staticmethod
+    def estimate_cost(
+        model_id: str,
+        input_tokens: int,
+        output_tokens: int,
+        cache_hit_tokens: int = 0,
+        *,
+        allow_stale_frontier: bool = False,
+    ) -> float:
         """Estimate USD cost for a given model and token counts."""
         spec = MODEL_CATALOGUE.get(model_id)
         if not spec:
             return 0.0
-        cost = (spec.price_in_1m * input_tokens / 1_000_000) + (
+        if spec.frontier and ModelRanker.catalogue_is_stale() and not allow_stale_frontier:
+            raise RuntimeError("Catálogo de precios frontera obsoleto; actualízalo antes de estimar")
+        hit = min(max(0, cache_hit_tokens), max(0, input_tokens))
+        miss = max(0, input_tokens - hit)
+        cost = (spec.price_in_1m * miss / 1_000_000) + (
+            spec.price_cache_hit_1m * hit / 1_000_000
+        ) + (
             spec.price_out_1m * output_tokens / 1_000_000
         )
         return cost
@@ -257,6 +282,8 @@ class ModelRanker:
         candidates: List[ModelSpec] = []
 
         for mid, spec in MODEL_CATALOGUE.items():
+            if "retired" in spec.tags:
+                continue
             # Filter by budget
             if max_budget_usd is not None and spec.price_in_1m > max_budget_usd:
                 continue
@@ -266,8 +293,6 @@ class ModelRanker:
                 if not any(t in spec.tags for t in task_tags):
                     continue
 
-            # Mark if available locally
-            is_local = mid in ollama_models
             candidates.append(spec)
 
         def _sort_key(s: ModelSpec) -> Tuple[float, int, float]:

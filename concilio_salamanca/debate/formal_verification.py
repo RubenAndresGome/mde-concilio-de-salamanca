@@ -105,9 +105,7 @@ class FormalVerifier:
                 # We expect LLM to output simple python expressions like "Implies(A, B)" or "A == B"
                 # To handle "A -> B" safely we might need to rely on the LLM outputting python compatible strings
                 # For safety, let's just do a basic string replacement if needed
-                c_clean = c.replace("->", "<=").replace(
-                    "=>", "<="
-                )  # P <= Q is P implies Q in some contexts, but let's just use Implies
+                # La normalización se conserva en el parser formal específico.
                 try:
                     expr = eval(c, {"__builtins__": None}, eval_namespace)
                     s.add(expr)

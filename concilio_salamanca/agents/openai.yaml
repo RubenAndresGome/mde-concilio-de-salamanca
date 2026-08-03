@@ -1,0 +1,4 @@
+interface:
+  display_name: "Concilio de Salamanca"
+  short_description: "Auditoría económica con Dogma y voto"
+  default_prompt: "Usa $concilio-salamanca para auditar este proyecto con el nivel mínimo, Dogma coherente y presupuesto explícito."

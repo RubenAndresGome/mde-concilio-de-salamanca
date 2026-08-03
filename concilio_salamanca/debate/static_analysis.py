@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Dict
 
 try:
-    import tree_sitter
     import tree_sitter_python as tspython
     import tree_sitter_javascript as tsjavascript
     from tree_sitter import Language, Parser
@@ -36,9 +35,9 @@ def analyze_code(code: str, filepath: str = "") -> Dict:
     ext = os.path.splitext(filepath)[1].lower() if filepath else ""
     lines = code.split("\n")
     total_lines = len(lines)
-    non_empty = sum(1 for l in lines if l.strip())
+    non_empty = sum(1 for line in lines if line.strip())
     comment_lines = sum(
-        1 for l in lines if l.strip().startswith(("//", "#", "--", "/*", "*", "<!--"))
+        1 for line in lines if line.strip().startswith(("//", "#", "--", "/*", "*", "<!--"))
     )
     blank_lines = total_lines - non_empty
 

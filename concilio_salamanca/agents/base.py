@@ -15,29 +15,14 @@ from concilio_salamanca.schemas import AgentOutput, AgentVeredict, Silogismo, Ve
 class AgenteBase(ABC):
     role_name: str
     system_prompt: str
-    json_schema_instruction: str = """
-ERES UN DESARROLLADOR DE SOFTWARE QUE RAZONA CON METODO FILOSOFICO.
-Tu output es un veredicto tecnico sobre codigo, no un ensayo filosofico.
-Las premisas de tus silogismos deben ser afirmaciones tecnicas comprobables sobre el codigo.
-
-FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
-{{{{
-  "agente": "{role_name}",
-  "rol": "{role}",
-  "silogismo": {{{{
-    "premisa_mayor": "Afirmacion tecnica universal (ej: Todo codigo que...)",
-    "premisa_mayor_tipo": "A|E|I|O",
-    "premisa_menor": "Afirmacion tecnica particular sobre este codigo",
-    "premisa_menor_tipo": "A|E|I|O",
-    "conclusion": "Veredicto tecnico necesario deducido",
-    "conclusion_tipo": "A|E|I|O"
-  }}}},
-  "principio_no_contradiccion": true,
-  "veredicto": "CONDENA|ABSUELVE|RESERVA",
-  "fundamento": "Razon tecnica del veredicto",
-  "anti_patron_id": "AP-XXX o null"
-}}}}
-"""
+    common_system_prompt: str = (
+        "Audita codigo con evidencia verificable. Respeta el Dogma y el PnC. "
+        "No inventes archivos ni ejecuciones. RESERVA si falta evidencia. "
+        "Devuelve JSON estricto, sin markdown. Esquema compacto: "
+        '{"A":"agente","D":"rol","S":{"PM":"premisa mayor","Pm":"premisa menor",'
+        '"C":"conclusion"},"N":true,"V":"CONDENA|ABSUELVE|RESERVA",'
+        '"E":"fundamento","Q":["preguntas breves"]}.'
+    )
 
     def __init__(self, model: BaseChatModel):
         self.model = model
@@ -45,16 +30,42 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
     def _build_messages(
         self, code: str, context: Optional[Dict[str, str]] = None
     ) -> List:
-        schema = self.json_schema_instruction.format(
-            role_name=self.role_name, role=self.role_name
-        )
-        system = SystemMessage(content=self.system_prompt + "\n\n" + schema)
-        user_content = f"Analiza el siguiente codigo segun tu rol de {self.role_name}:\n\n```\n{code}\n```"
+        system = SystemMessage(content=self.common_system_prompt)
+        # El prefijo hasta el cierre del código es idéntico entre electores.
+        user_content = f"DOGMA: auditar el objeto dado con el mínimo contexto suficiente.\nCODIGO:\n```\n{code}\n```"
         if context:
-            user_content += "\n\n--- ARGUMENTOS DE OTROS AGENTES PARA REFUTACION ---\n"
-            for agente, argumento in context.items():
-                user_content += f"\n### {agente}:\n{argumento}\n"
+            user_content += "\nLEDGER PREVIO:\n" + "\n".join(
+                f"{agente}:{argumento}" for agente, argumento in sorted(context.items())
+            )
+        user_content += (
+            f"\nROLE:{self.role_name}\nCONTRATO DEL ROL:\n{self.system_prompt}\n"
+            "Responde con el esquema compacto. Máximo tres preguntas, sólo si cambian la decisión."
+        )
         return [system, HumanMessage(content=user_content)]
+
+    def _model_name(self) -> str:
+        for attr in ("model_name", "model"):
+            value = getattr(self.model, attr, None)
+            if isinstance(value, str):
+                return value
+        return "unknown"
+
+    def _bounded_model(self, max_tokens: int):
+        if max_tokens > 0 and isinstance(self.model, BaseChatModel):
+            return self.model.bind(max_tokens=max_tokens)
+        return self.model
+
+    @staticmethod
+    def _response_text(response) -> str:
+        content = getattr(response, "content", response)
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            return "".join(
+                str(item.get("text", "")) if isinstance(item, dict) else str(item)
+                for item in content
+            )
+        return str(content)
 
     def _code_fingerprint(
         self, code: str, context: Optional[Dict[str, str]] = None
@@ -64,7 +75,7 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
             ctx_sorted = "|".join(f"{k}:{v[:200]}" for k, v in sorted(context.items()))
             ctx_hash = hashlib.sha256(ctx_sorted.encode()).hexdigest()[:12]
         return hashlib.sha256(
-            f"{self.role_name}|{code}|{ctx_hash}".encode()
+            f"{self._model_name()}|{self.role_name}|{code}|{ctx_hash}".encode()
         ).hexdigest()[:24]
 
     def _check_code_cache(
@@ -83,6 +94,8 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
                 if structured and "[Error" not in structured.fundamento
                 else None,
                 timestamp=time.time(),
+                compact="",
+                cached=True,
             )
             return cached
         return None
@@ -155,7 +168,7 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
 
         # Headroom context compression integration
         import os
-        if os.environ.get("HEADROOM_ENABLED", "false").lower() == "true" or len(str(messages)) > 10000:
+        if os.environ.get("HEADROOM_ENABLED", "false").lower() == "true":
             try:
                 from headroom import compress
                 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
@@ -170,30 +183,29 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
                 import sys
                 sys.stderr.write(f"\n[ADVERTENCIA] Fallo compresion de Headroom: {e}\n")
 
-        if max_tokens > 0:
-            budget_instruction = (
-                f"RESTRICCION DE TOKENS: Tu respuesta no debe exceder aproximadamente "
-                f"{max_tokens} tokens (~{max_tokens // 4} palabras). "
-                f"Se conciso. Elimina toda palabra innecesaria. Ve directo a la conclusion."
-            )
-            messages[0] = SystemMessage(
-                content=messages[0].content + "\n\n" + budget_instruction
-            )
-
         ts = time.time()
 
         # Inject MCP Tools via bind_tools if supported
         from concilio_salamanca.debate.mcp_client import HAS_MCP
 
-        llm = self.model
+        llm = self._bounded_model(max_tokens)
         if HAS_MCP:
             # Here we would bind actual LangChain wrappers of MCP tools
             pass
 
         response = await llm.ainvoke(messages)
-        raw = response.content
+        latency_ms = (time.time() - ts) * 1000
+        raw = self._response_text(response)
         structured = self._parse_response(raw)
-        output = AgentOutput(raw=raw, structured=structured, timestamp=ts)
+        from concilio_salamanca.debate.cave_protocol import encode
+        from concilio_salamanca.debate.token_accountant import extract_usage
+
+        parse_error = structured is None or structured.fundamento.startswith("Error al parsear")
+        output = AgentOutput(
+            raw=raw, structured=structured, timestamp=ts, compact=encode(structured),
+            usage=extract_usage(response), model=self._model_name(), latency_ms=latency_ms,
+            parse_error=parse_error,
+        )
 
         try:
             self._store_code_cache(code, output, context)
@@ -215,7 +227,7 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
 
         # Headroom context compression integration
         import os
-        if os.environ.get("HEADROOM_ENABLED", "false").lower() == "true" or len(str(messages)) > 10000:
+        if os.environ.get("HEADROOM_ENABLED", "false").lower() == "true":
             try:
                 from headroom import compress
                 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
@@ -230,21 +242,20 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
                 import sys
                 sys.stderr.write(f"\n[ADVERTENCIA] Fallo compresion de Headroom: {e}\n")
 
-        if max_tokens > 0:
-            budget_instruction = (
-                f"RESTRICCION DE TOKENS: Tu respuesta no debe exceder aproximadamente "
-                f"{max_tokens} tokens (~{max_tokens // 4} palabras). "
-                f"Se conciso. Elimina toda palabra innecesaria. Ve directo a la conclusion."
-            )
-            messages[0] = SystemMessage(
-                content=messages[0].content + "\n\n" + budget_instruction
-            )
-
         ts = time.time()
-        response = self.model.invoke(messages)
-        raw = response.content
+        response = self._bounded_model(max_tokens).invoke(messages)
+        latency_ms = (time.time() - ts) * 1000
+        raw = self._response_text(response)
         structured = self._parse_response(raw)
-        output = AgentOutput(raw=raw, structured=structured, timestamp=ts)
+        from concilio_salamanca.debate.cave_protocol import encode
+        from concilio_salamanca.debate.token_accountant import extract_usage
+
+        parse_error = structured is None or structured.fundamento.startswith("Error al parsear")
+        output = AgentOutput(
+            raw=raw, structured=structured, timestamp=ts, compact=encode(structured),
+            usage=extract_usage(response), model=self._model_name(), latency_ms=latency_ms,
+            parse_error=parse_error,
+        )
 
         try:
             self._store_code_cache(code, output, context)
@@ -276,13 +287,21 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
         try:
             json_str = self._extract_json(raw)
             data = json.loads(json_str)
+            raw_questions = data.get("preguntas_casuisticas", data.get("Q", []))
+            if not isinstance(raw_questions, list):
+                raw_questions = []
             return AgentVeredict(
-                agente=data.get("agente", self.role_name),
-                rol=data.get("rol", self.role_name),
-                silogismo=Silogismo(**data["silogismo"]),
-                principio_no_contradiccion=data.get("principio_no_contradiccion", True),
-                veredicto=Veredicto(data.get("veredicto", "RESERVA")),
-                fundamento=data.get("fundamento", ""),
+                agente=data.get("agente", data.get("A", self.role_name)),
+                rol=data.get("rol", data.get("D", self.role_name)),
+                silogismo=self._parse_syllogism(data),
+                principio_no_contradiccion=data.get("principio_no_contradiccion", data.get("N", True)),
+                veredicto=Veredicto(data.get("veredicto", data.get("V", "RESERVA"))),
+                fundamento=data.get("fundamento", data.get("E", "")),
+                preguntas_casuisticas=[
+                    str(question)[:300]
+                    for question in raw_questions[:3]
+                    if str(question).strip()
+                ],
             )
         except (json.JSONDecodeError, KeyError, TypeError) as e:
             import sys
@@ -303,9 +322,20 @@ FORMATO DE SALIDA OBLIGATORIO (JSON estricto, sin markdown ni texto adicional):
                 fundamento=f"Error al parsear JSON de respuesta. LLM emitio formato invalido. Raw: {raw[:300]}",
             )
 
+    @staticmethod
+    def _parse_syllogism(data: dict) -> Silogismo:
+        if "silogismo" in data:
+            return Silogismo(**data["silogismo"])
+        compact = data["S"]
+        return Silogismo(
+            premisa_mayor=compact["PM"],
+            premisa_menor=compact["Pm"],
+            conclusion=compact["C"],
+        )
+
     @abstractmethod
     def act(
-        self, code: str, context: Optional[Dict[str, str]] = None
+        self, code: str, context: Optional[Dict[str, str]] = None, max_tokens: int = 0
     ) -> AgentOutput: ...
 
 
@@ -315,13 +345,15 @@ class AgentFromPrompt(AgenteBase):
         self.system_prompt = system_prompt
         super().__init__(model)
 
-    def act(self, code: str, context: Optional[Dict[str, str]] = None) -> AgentOutput:
-        return self.reason(code, context)
+    def act(
+        self, code: str, context: Optional[Dict[str, str]] = None, max_tokens: int = 0
+    ) -> AgentOutput:
+        return self.reason(code, context, max_tokens=max_tokens)
 
     async def act_async(
-        self, code: str, context: Optional[Dict[str, str]] = None
+        self, code: str, context: Optional[Dict[str, str]] = None, max_tokens: int = 0
     ) -> AgentOutput:
-        return await self.reason_async(code, context)
+        return await self.reason_async(code, context, max_tokens=max_tokens)
 
     def attack(self, code: str) -> str:
         output = self.reason(code)

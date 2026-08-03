@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -21,34 +22,24 @@ class MagisterDeterminans:
 
     def __init__(self, model: BaseChatModel):
         self.model = model
+        self.last_usage = {}
+        self.last_latency_ms = 0.0
+        self.last_model = "unknown"
 
     def judge(
         self,
         state: DebateState,
         pnc_validation: Optional[PnCValidation] = None,
+        max_tokens: int = 0,
     ) -> str:
-        code = state.get("code", "")
-        history = state.get("arguments_history", [])
+        from concilio_salamanca.debate.cave_protocol import encode
+        from concilio_salamanca.debate.token_accountant import extract_usage
 
-        arguments_text = ""
-
-        if history:
-            # Include ALL rounds so the Magister sees the full debate evolution
-            for round_data in history:
-                round_num = round_data.get("round", "?")
-                for agent_name, raw_content in round_data.get("arguments", {}).items():
-                    content = (
-                        raw_content
-                        if isinstance(raw_content, str)
-                        else str(raw_content)
-                    )
-                    arguments_text += f"\n\n===== {agent_name} (Ronda {round_num}) =====\n{content[:3000]}"
-        else:
-            # Fallback: read from dynamic agent_outputs dict
-            agent_outputs = state.get("agent_outputs", {})
-            for agent_name, output in agent_outputs.items():
-                content = output.raw if hasattr(output, "raw") else str(output)
-                arguments_text += f"\n\n===== {agent_name} =====\n{content[:3000]}"
+        # Sólo el último voto estructurado: nunca reenviar código ni rondas completas.
+        arguments_text = "\n".join(
+            f"{agent_name}:{output.compact or encode(output.structured)}"
+            for agent_name, output in state.get("agent_outputs", {}).items()
+        )
 
         pnc_text = ""
         if pnc_validation:
@@ -60,24 +51,33 @@ VALIDACIÓN DEL PRINCIPIO DE NO CONTRADICCIÓN:
 """
 
         messages = [
-            SystemMessage(content=self.system_prompt),
+            SystemMessage(
+                content="Eres Magister técnico. Resuelve el ledger, el voto y el PnC. "
+                "No inventes evidencia. Devuelve el JSON de determinatio requerido."
+            ),
             HumanMessage(
-                content=f"""CÓDIGO BAJO JUICIO:
-```
-{code}
-```
-
-ARGUMENTOS DE LOS AGENTES DEL CONCILIO:
+                content=f"""LEDGER COMPRIMIDO:
 {arguments_text}
+
+VOTACION: {json.dumps(state.get('voting_summary', {}), ensure_ascii=False)}
 
 {pnc_text}
 
-Emite tu DETERMINATIO final en el formato JSON requerido."""
+FORMATO: {{"quaestio":"...","videtur":"...","sed_contra":"...","respondeo":"...","determinatio_codici":"...","veredicto_final":"CONDENA|ABSUELVE|RESERVA"}}"""
             ),
         ]
-
-        response = self.model.invoke(messages)
-        return response.content
+        llm = self.model.bind(max_tokens=max_tokens) if max_tokens > 0 and isinstance(self.model, BaseChatModel) else self.model
+        started = time.time()
+        response = llm.invoke(messages)
+        self.last_latency_ms = (time.time() - started) * 1000
+        self.last_usage = extract_usage(response)
+        for attr in ("model_name", "model"):
+            value = getattr(self.model, attr, None)
+            if isinstance(value, str):
+                self.last_model = value
+                break
+        content = getattr(response, "content", response)
+        return content if isinstance(content, str) else str(content)
 
     def parse_determinatio(self, raw: str) -> Determinatio:
         try:

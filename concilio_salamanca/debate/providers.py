@@ -27,7 +27,7 @@ PROVIDERS: Dict[str, Dict[str, Any]] = {
         "pkg": "langchain_openai",
         "env_key": "DEEPSEEK_API_KEY",
         "base_url": "https://api.deepseek.com",
-        "default_model": "deepseek-chat",
+        "default_model": "deepseek-v4-flash",
     },
     "anthropic": {
         "cls": "ChatAnthropic",
@@ -126,17 +126,11 @@ def create_model(
 def resolve_api_key(provider: str, cli_key: Optional[str] = None) -> Optional[str]:
     info = get_provider_info(provider)
     env_key = info.get("env_key", "")
+    if not env_key:
+        return cli_key or None
     resolved = cli_key or os.environ.get(env_key)
-    if not resolved and env_key:
-        fallback = os.environ.get("OPENAI_API_KEY")
-        if fallback and provider != "openai":
-            warnings.warn(
-                f"Sin ${env_key}. Cayendo a OPENAI_API_KEY. "
-                f"Podrias facturar en OpenAI en lugar de {provider}.",
-                RuntimeWarning,
-            )
-        return fallback or None
-    return resolved or os.environ.get("OPENAI_API_KEY") or None
+    # Una clave de otro proveedor nunca debe reinterpretarse silenciosamente.
+    return resolved or None
 
 
 def get_sorted_providers_by_weight(weights_config: dict) -> list:
@@ -201,7 +195,7 @@ def resolve_provider_from_weights(
             info = PROVIDERS[explicit]
             return {
                 "provider": explicit,
-                "model": info.get("default_model", "deepseek-chat"),
+                "model": info.get("default_model", "deepseek-v4-flash"),
             }
 
     if sorted_providers:
@@ -209,10 +203,10 @@ def resolve_provider_from_weights(
         info = PROVIDERS[best]
         return {
             "provider": best,
-            "model": info.get("default_model", "deepseek-chat"),
+            "model": info.get("default_model", "deepseek-v4-flash"),
         }
 
-    return {"provider": "deepseek", "model": "deepseek-chat"}
+    return {"provider": "deepseek", "model": "deepseek-v4-flash"}
 
 
 def list_providers() -> str:

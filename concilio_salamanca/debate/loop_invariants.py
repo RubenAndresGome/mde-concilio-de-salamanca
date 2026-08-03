@@ -84,8 +84,8 @@ class LoopInvariantEngine:
 
             try:
                 inv = eval(data["invariante"], {"__builtins__": None}, eval_ns)
-                cond = eval(data["condicion_bucle"], {"__builtins__": None}, eval_ns)
-                post = eval(data["post_iteracion"], {"__builtins__": None}, eval_ns)
+                eval(data["condicion_bucle"], {"__builtins__": None}, eval_ns)
+                eval(data["post_iteracion"], {"__builtins__": None}, eval_ns)
 
                 # Check 1: Invariante conservado?
                 # inv_old AND cond_old AND post -> inv

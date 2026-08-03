@@ -26,8 +26,13 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from concilio_salamanca.cli import setup_parser, prompt_agents_interactive
-from concilio_salamanca.debate.formatters import (
+from concilio_salamanca.cli import (  # noqa: E402
+    prompt_agents_interactive,
+    prompt_audit_level,
+    prompt_compute_policy,
+    setup_parser,
+)
+from concilio_salamanca.debate.formatters import (  # noqa: E402
     format_output_json,
     format_output_mermaid,
     format_output_sarif,
@@ -35,8 +40,8 @@ from concilio_salamanca.debate.formatters import (
     format_output_text,
     format_output_markdown,
 )
-from concilio_salamanca.debate.voting import build_voting_table
-from concilio_salamanca.debate.orchestrator import DebateConfig, DebateOrchestrator
+from concilio_salamanca.debate.voting import build_voting_table  # noqa: E402
+from concilio_salamanca.debate.orchestrator import DebateConfig, DebateOrchestrator  # noqa: E402
 
 
 def load_config(config_path: Optional[str] = None) -> dict:
@@ -82,7 +87,6 @@ def detect_language(code: str, filepath: str = "") -> str:
     }
     if ext in ext_map:
         return ext_map[ext]
-    code_lower = code.strip().lower()
     if "def " in code or "import " in code or "print(" in code:
         return "python"
     if "function " in code or "const " in code or "=>" in code or "require(" in code:
@@ -167,6 +171,39 @@ def main():
         app_path = Path(__file__).parent / "dashboard" / "app.py"
         print(f"Lanzando Dashboard Streamlit: {app_path}")
         subprocess.run([sys.executable, "-m", "streamlit", "run", str(app_path)])
+        return
+
+    if args.command == "install":
+        from concilio_salamanca.installer import (
+            configure_mcp,
+            inject_agents_md,
+            copy_skill_md,
+            self_test,
+            uninstall,
+            format_install_report,
+        )
+        agent = args.agent or "opencode"
+
+        if args.uninstall:
+            print(f"Desinstalando configuracion para {agent}...")
+            uninstall(agent)
+            print("Configuracion removida.")
+            return
+
+        print(f"Configurando Concilio para {agent}...")
+        configure_mcp(agent, args.binary)
+        inject_agents_md(agent)
+        copy_skill_md(agent)
+
+        if not args.skip_tests:
+            print("\nEjecutando self-test...")
+            results = self_test()
+            print(format_install_report(results))
+        return
+
+    if args.command == "mcp-serve":
+        from concilio_salamanca.mcp_server import mcp_serve
+        mcp_serve()
         return
 
     if args.command == "license":
@@ -339,89 +376,6 @@ def main():
     cfg = load_config(args.config)
     concilio_cfg = cfg.get("concilio", {})
     debate_cfg = cfg.get("debate", {})
-
-    provider_global = args.provider or concilio_cfg.get("provider", "openai")
-    model_global = args.model or concilio_cfg.get("model", "gpt-4o")
-
-    # --- Resolución multi-modelo por pesos (con auto-ranking) ---
-    model_weights_cfg = cfg.get("model_weights", {})
-    roles_cfg = cfg.get("roles", {})
-    prefer_local = args.prefer_local
-
-    from concilio_salamanca.debate.providers import resolve_provider_from_weights
-
-    if model_weights_cfg and not args.provider_obreros:
-        ejecutor = resolve_provider_from_weights(
-            model_weights_cfg, role="ejecutor", roles_config=roles_cfg,
-            prefer_local=prefer_local,
-        )
-        provider_obreros = ejecutor["provider"]
-        model_obreros = ejecutor["model"]
-    else:
-        provider_obreros = args.provider_obreros or provider_global
-        model_obreros = args.model_obreros or model_global
-
-    if model_weights_cfg and not args.provider_magister:
-        director = resolve_provider_from_weights(
-            model_weights_cfg, role="director_strategy", roles_config=roles_cfg,
-            prefer_local=prefer_local,
-        )
-        provider_magister = director["provider"]
-        model_magister = director["model"]
-    else:
-        provider_magister = args.provider_magister or provider_global
-        model_magister = args.model_magister or model_global
-
-    base_url = args.base_url or concilio_cfg.get("base_url") or None
-    temperature = concilio_cfg.get("temperature", 0)
-    max_rounds = args.rounds or debate_cfg.get("max_rounds", 2)
-    enable_pnc = not args.no_pnc and debate_cfg.get("enable_pnc", True)
-    parallel_execution = debate_cfg.get("parallel", False)
-
-    if args.fast:
-        max_rounds = 1
-        agent_selection = ["promotor", "defensor"]
-        parallel_execution = True
-    elif args.interactive:
-        agent_selection = prompt_agents_interactive()
-    elif args.agents == "auto" or (not args.agents and args.file):
-        from concilio_salamanca.debate.static_analysis import auto_select_agents
-
-        code_for_auto = code if args.code else ""
-        filepath_auto = args.file if args.file else ""
-        agent_selection = auto_select_agents(filepath_auto, code_for_auto)
-        print(f"  Auto-seleccion: {agent_selection}")
-    elif args.agents:
-        agent_selection = [a.strip() for a in args.agents.split(",") if a.strip()]
-    elif debate_cfg.get("agents"):
-        agent_selection = debate_cfg["agents"]
-    else:
-        agent_selection = ["promotor", "defensor", "doctor", "larouche", "leon_xiii"]
-
-    from concilio_salamanca.debate.providers import create_model, resolve_api_key
-
-    api_key_obreros = resolve_api_key(provider_obreros, args.api_key)
-    if not api_key_obreros and provider_obreros not in ("ollama",):
-        env_key = {
-            "openai": "OPENAI_API_KEY",
-            "deepseek": "DEEPSEEK_API_KEY",
-            "anthropic": "ANTHROPIC_API_KEY",
-            "groq": "GROQ_API_KEY",
-        }.get(provider_obreros, "API_KEY")
-        print(f"Error: Se requiere {env_key} para los obreros")
-        sys.exit(1)
-
-    api_key_magister = resolve_api_key(provider_magister, args.api_key)
-    if not api_key_magister and provider_magister not in ("ollama",):
-        env_key = {
-            "openai": "OPENAI_API_KEY",
-            "deepseek": "DEEPSEEK_API_KEY",
-            "anthropic": "ANTHROPIC_API_KEY",
-            "groq": "GROQ_API_KEY",
-        }.get(provider_magister, "API_KEY")
-        print(f"Error: Se requiere {env_key} para el magister")
-        sys.exit(1)
-
     if args.code:
         code = args.code
     elif args.file:
@@ -436,10 +390,54 @@ def main():
 
     language = detect_language(code, args.file or "")
 
+    interactive_terminal = bool(sys.stdin.isatty() and not args.non_interactive)
+    compute_cfg = cfg.get("compute", {})
+    compute_policy = args.compute_policy
+    priority = args.priority
+    if interactive_terminal and compute_policy is None:
+        compute_policy, prompted_priority = prompt_compute_policy()
+        priority = priority or prompted_priority
+    compute_policy = compute_policy or compute_cfg.get("non_interactive_policy", "auto")
+    priority = priority or compute_cfg.get("default_priority", "cost")
+    audit_level = 1 if args.fast else args.audit_level
+    if audit_level is None:
+        audit_level = prompt_audit_level() if interactive_terminal else 1
+
+    from concilio_salamanca.debate.audit_profiles import get_audit_profile, select_profile_agents
+    from concilio_salamanca.debate.compute_policy import ComputePolicyResolver, ComputeResolution
+    from concilio_salamanca.debate.providers import create_model, resolve_api_key
+
+    profile = get_audit_profile(audit_level)
+    provider_override = args.provider_obreros or args.provider
+    model_override = args.model_obreros or args.model
+    if audit_level == 0:
+        resolution = ComputeResolution(None, None, compute_policy, priority, "audit-level-0", True)
+    else:
+        resolution = ComputePolicyResolver().resolve(
+            policy=compute_policy,
+            priority=priority,
+            provider_override=provider_override,
+            model_override=model_override,
+            api_key=args.api_key,
+            non_interactive=not interactive_terminal,
+        )
+    if audit_level > 0 and resolution.static_only:
+        audit_level = 0
+        profile = get_audit_profile(0)
+        print(f"  RESERVA: {resolution.reserve_reason}. Se ejecutará auditoría estática.")
+
+    if args.interactive and audit_level > 0:
+        requested_agents = prompt_agents_interactive()
+    elif args.agents and args.agents != "auto":
+        requested_agents = [value.strip() for value in args.agents.split(",") if value.strip()]
+    else:
+        requested_agents = None
+    agent_selection = select_profile_agents(audit_level, code, language, requested_agents)
+
     from concilio_salamanca.agents import resolve_agents, get_agent_label
 
     resolved = resolve_agents(agent_selection)
-    if not resolved:
+    if audit_level > 0 and not resolved:
         print(
             "Error: Ningun agente valido seleccionado. Usa --list-agents para ver opciones."
         )
@@ -464,24 +462,45 @@ def main():
         except Exception as e:
             print(f"  Advertencia: No se pudo realizar el analisis estatico: {e}")
 
-    model = create_model(
-        provider=provider_obreros,
-        model=model_obreros,
-        temperature=temperature,
-        base_url=base_url,
-        api_key=api_key_obreros,
-    )
-
-    if provider_obreros == provider_magister and model_obreros == model_magister:
-        magister_model = model
-    else:
-        magister_model = create_model(
-            provider=provider_magister,
-            model=model_magister,
-            temperature=temperature,
-            base_url=base_url,
-            api_key=api_key_magister,
-        )
+    model = None
+    magister_model = None
+    if not resolution.static_only:
+        api_key = resolve_api_key(resolution.provider, args.api_key)
+        if resolution.provider != "ollama" and not api_key:
+            resolution = resolution.__class__(
+                None, None, compute_policy, priority, "static-fallback", True,
+                f"Falta la clave del proveedor {resolution.provider}",
+            )
+            audit_level = 0
+            profile = get_audit_profile(0)
+            agent_selection = []
+            agent_labels = []
+        else:
+            deepseek_options = (
+                {"extra_body": {"thinking": {"type": "disabled"}}}
+                if resolution.provider == "deepseek" and priority == "cost" else {}
+            )
+            model = create_model(
+                provider=resolution.provider,
+                model=resolution.model,
+                temperature=concilio_cfg.get("temperature", 0),
+                base_url=args.base_url or concilio_cfg.get("base_url") or None,
+                api_key=api_key,
+                **deepseek_options,
+            )
+            magister_model = model
+            if args.provider_magister or args.model_magister:
+                magister_resolution = ComputePolicyResolver().resolve(
+                    policy=compute_policy, priority=priority,
+                    provider_override=args.provider_magister or resolution.provider,
+                    model_override=args.model_magister,
+                    api_key=args.api_key, non_interactive=not interactive_terminal,
+                )
+                magister_key = resolve_api_key(magister_resolution.provider, args.api_key)
+                magister_model = create_model(
+                    provider=magister_resolution.provider, model=magister_resolution.model,
+                    temperature=0, base_url=args.base_url, api_key=magister_key,
+                )
 
     if args.cache_stats:
         from concilio_salamanca.debate.syllogism_cache import get_syllogism_cache
@@ -490,12 +509,14 @@ def main():
         print(cache.summary())
         print()
 
-    # Retrieve relevant precedents from past debates
+    # Recuperar sólo contexto local acotado para niveles que usan LLM.
     from concilio_salamanca.debate.precedents import get_precedent_engine
 
     precedent_engine = get_precedent_engine()
     precedent_context = ""
     try:
+        if audit_level == 0:
+            raise RuntimeError("nivel estatico")
         query_terms = [language]
         if args.file:
             query_terms.append(os.path.basename(args.file))
@@ -510,28 +531,35 @@ def main():
     # Gather git/mde history context for process-oriented agents
     git_context = ""
     try:
-        from concilio_salamanca.debate.git_history import format_git_context
+        if audit_level == 0:
+            git_context = ""
+        else:
+            from concilio_salamanca.debate.git_history import format_git_context
 
-        project_path = os.path.dirname(args.file) if args.file else "."
-        git_context = format_git_context(project_path, n=15)
-        if git_context:
-            print("  Contexto Git/MDE History cargado.")
+            project_path = os.path.dirname(args.file) if args.file else "."
+            git_context = format_git_context(project_path, n=15)
+            if git_context:
+                print("  Contexto Git/MDE History cargado.")
     except Exception as e:
         print(f"  Advertencia: No se pudo cargar contexto git: {e}")
 
-    # Resolve mode from CLI or config
     debate_mode = args.mode or debate_cfg.get("mode", "auto")
 
     config = DebateConfig(
-        max_rounds=max_rounds,
-        include_pnc_validation=enable_pnc,
+        max_rounds=profile.max_rounds,
+        include_pnc_validation=not args.no_pnc and debate_cfg.get("enable_pnc", True),
         agents=agent_selection,
-        parallel=parallel_execution,
+        parallel=False,
         mode=debate_mode,
         refine_design=args.refine_design,
         enable_ockham=args.ockham,
         save_history=args.save_history,
         auto_save_history=args.auto_save_history,
+        audit_level=audit_level,
+        token_budget=max(0, args.token_budget if args.token_budget is not None else int(cfg.get("budget", {}).get("default_token_budget", 0))),
+        model_name=resolution.model or "static",
+        escalation_candidates=cfg.get("frontier", {}).get("candidates", ["gpt-5.6-terra", "gpt-5.6-sol"]),
+        reserve_reason=resolution.reserve_reason or "",
     )
     orchestrator = DebateOrchestrator(model=model, magister_model=magister_model, config=config)
     result = orchestrator.run_debate(
@@ -542,12 +570,41 @@ def main():
         git_context=git_context,
     )
 
-    voting = build_voting_table(result)
+    escalation = result.get("escalation")
+    if interactive_terminal and escalation and escalation.get("requires_user_decision"):
+        print("\nEscalamiento opcional (no ejecutado):")
+        print(f"  Motivos: {', '.join(escalation.get('reasons', []))}")
+        print(f"  Agentes: {', '.join(escalation.get('agents_to_repeat', [])) or 'hasta dos especialistas'}")
+        print(f"  Modelos/costo estimado USD: {escalation.get('estimated_cost_usd', {})}")
+        print(f"  Máximo de salida por llamada: {escalation.get('max_tokens', 0)} tokens")
+        try:
+            approve = input("¿Autorizar un modelo frontera para esta decisión? [s/N] > ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            approve = ""
+        if approve in {"s", "si", "sí", "y", "yes"}:
+            candidates = escalation.get("candidates", [])
+            candidate = candidates[0] if candidates else "gpt-5.6-terra"
+            try:
+                chosen = input(f"Modelo [{candidate}] > ").strip()
+            except (EOFError, KeyboardInterrupt):
+                chosen = ""
+            if chosen in candidates:
+                candidate = chosen
+            frontier_key = resolve_api_key("openai")
+            if frontier_key:
+                frontier_model = create_model("openai", candidate, api_key=frontier_key, temperature=0)
+                result = orchestrator.resume_with_frontier(
+                    result, frontier_model,
+                    decision_id=escalation["decision_id"], candidate=candidate,
+                )
+            else:
+                print("  No se ejecutó frontera: falta OPENAI_API_KEY.")
+
+    voting = result["voting"] if "voting" in result else build_voting_table(result)
     result["voting"] = voting
 
     # Store precedents from this debate for future use
     if result.get("determinatio"):
-        terms = [language, result["determinatio"].veredicto_final.value]
         precedent_engine.add_precedent_from_result(result)
 
     if args.output == "mermaid":
@@ -561,7 +618,7 @@ def main():
         return
 
     if args.mode == "ejecutivo" and args.output == "text":
-        output = format_output_executive(result, agent_labels, max_rounds, voting)
+        output = format_output_executive(result, agent_labels, profile.max_rounds, voting)
     else:
         formatters = {
             "json": format_output_json,
@@ -593,7 +650,7 @@ def main():
     save_dir = cfg.get("output", {}).get("save_dir")
     if save_dir:
         Path(save_dir).mkdir(parents=True, exist_ok=True)
-        ext = {"json": ".json", "text": ".txt", "markdown": ".md"}[args.output]
+        ext = {"json": ".json", "text": ".txt", "markdown": ".md", "mermaid": ".md", "sarif": ".sarif"}[args.output]
         filename = f"veredicto_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
         filepath = Path(save_dir) / filename
         filepath.write_text(output, encoding="utf-8")

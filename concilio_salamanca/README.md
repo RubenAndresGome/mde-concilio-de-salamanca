@@ -2,7 +2,7 @@
 
 > *"Ninguna linea de codigo sera desplegada sin haber sido sometida al tribunal de la razon."*
 
-Sistema multi-agente de auditoria de codigo basado en logica aristotelico-tomista. **39 agentes IA** especializados debaten usando silogismos formales, logica de predicados y teoria de conjuntos. Multi-proveedor LLM con ranking automatico calidad-precio-disponibilidad vía ModelRanker.
+Sistema multi-agente de auditoria de codigo basado en logica aristotelico-tomista. Un router económico elige el mínimo de agentes, comprime el debate y aplica límites reales de salida. DeepSeek V4 Flash es el cloud predeterminado; SQLite/FTS5 conserva Dogmas y vecindarios locales.
 
 [![CI](https://github.com/anomalyco/opencode/actions/workflows/ci.yml/badge.svg)](https://github.com/anomalyco/opencode/actions)
 [![Python 3.11+](https://img.shields.io/pypi/pyversions/concilio-salamanca)](https://pypi.org/project/concilio-salamanca/)
@@ -37,9 +37,9 @@ pip install concilio-salamanca[anthropic,groq,ollama]
 
 | Proveedor | Variable de entorno | Modelo default | Costo |
 |---|---|---|---|
-| Ollama (local) | — | `deepseek-r1:8b` | **Gratis** |
+| Ollama (local) | — | DeepSeek/Qwen Coder disponible | **Gratis** |
 | Meta Llama | via OpenRouter | `llama-3.3-70b` | $0.10/MTok |
-| DeepSeek | `DEEPSEEK_API_KEY` | `deepseek-chat` | $0.09/MTok |
+| DeepSeek | `DEEPSEEK_API_KEY` | `deepseek-v4-flash` | $0.14 entrada miss / $0.28 salida |
 | Qwen (Alibaba) | via OpenRouter | `qwen3-32b` | $0.08/MTok |
 | MiniMax | via OpenRouter | `minimax-m2.5` | $0.12/MTok |
 | GLM (Z.ai) | via OpenRouter | `glm-4.7-flash` | $0.06/MTok |
@@ -48,19 +48,29 @@ pip install concilio-salamanca[anthropic,groq,ollama]
 | **OpenRouter** | `OPENROUTER_API_KEY` | `deepseek/deepseek-v4-flash` | **339+ modelos** |
 | Groq | `GROQ_API_KEY` | `llama-3.3-70b` | Gratis (limitado) |
 
-El **ModelRanker** selecciona automaticamente el mejor modelo calidad-precio-disponibilidad. Usa `--list-model-prices` para ver la tabla completa.
+`ComputePolicyResolver` selecciona una sola política: DeepSeek V4 Flash/Pro, Ollama o auditoría estática con `RESERVA`. Los modelos frontera requieren aprobación individual.
+Precios y caché DeepSeek: https://api-docs.deepseek.com/quick_start/pricing y https://api-docs.deepseek.com/guides/kv_cache.
 
 ### Enrutamiento Cognitivo
 
 ```bash
-concilio --file app.js \
-  --provider-obreros deepseek --model-obreros deepseek-chat \
-  --provider-magister openai --model-magister gpt-4o
+concilio --file app.js --audit-level 1 --compute-policy cloud --priority cost
 ```
 
 ---
 
 ## Uso rapido
+
+### Niveles de auditoría
+
+| Nivel | Agentes/rondas | Máximo de llamadas | Síntesis |
+|---|---:|---:|---|
+| `0` | 0 / 0 | 0 | Estática determinista |
+| `1` | 2 / 1 | 2 | Electoral sin LLM |
+| `2` | 3 / hasta 2 | 6 | Magister DeepSeek |
+| `3` | 5 / hasta 2 | 11 | Concilio pleno |
+
+En CI/MCP el nivel predeterminado es `1`; `--fast` es su alias.
 
 ### Auditoria basica (escolastica)
 
@@ -100,7 +110,7 @@ concilio audit --file app.js --domain seguridad
 
 ---
 
-## Agentes del Concilio (39)
+## Agentes del Concilio (40)
 
 ### Escolasticos (tribunal clasico)
 
@@ -195,7 +205,7 @@ concilio audit --file app.js --domain seguridad
 --agents seguridad_completa  # Seguridad completa (6)
 --agents embebidos       # IoT/Embebidos (4)
 --agents token_optimizers    # Optimizacion de tokens (4)
---agents todos           # Los 39 agentes
+--agents todos           # Los 40 agentes
 ```
 
 ---
@@ -212,8 +222,13 @@ concilio audit --file app.js --domain seguridad
 | `--provider-magister` | Proveedor para el Juez (ej. `openai`) |
 | `--model-magister` | Modelo para el Juez (ej. `gpt-4o`) |
 | `--provider-obreros` | Proveedor para los debatientes (ej. `deepseek`) |
-| `--model-obreros` | Modelo para los debatientes (ej. `deepseek-chat`) |
+| `--model-obreros` | Override de modelo para debatientes (ej. `deepseek-v4-flash`) |
 | `--rounds`, `-r` | Rondas de debate (default: 2) |
+| `--audit-level` | `0` estático, `1` económico, `2` normal, `3` pleno |
+| `--compute-policy` | `local`, `cloud` o `auto` |
+| `--priority` | `cost` (V4 Flash) o `quality` (V4 Pro) |
+| `--token-budget` | Techo total de tokens de la sesión |
+| `--non-interactive` | Política económica sin preguntas |
 | `--mode` | `escolastico`, `ejecutivo`, `sdd`, `pdca`, `auto` |
 | `--output`, `-o` | `text`, `json`, `markdown`, `mermaid` |
 | `--verbose`, `-v` | Reporte trinivel de silogismos |
@@ -304,7 +319,7 @@ concilio_salamanca/
 ├── license_generator.py        # RNS v4.1 generator (BME, Bulas, Registry)
 ├── schemas.py                  # Pydantic models + DebateState
 │
-├── agents/                     # Dynamic agent registry (39 agents)
+├── agents/                     # Dynamic agent registry (40 agents)
 │   ├── __init__.py             # AGENT_DEFS, AGENT_GROUPS, resolve_agents()
 │   ├── base.py                 # AgentFromPrompt, cache integration
 │   └── magister_determinans.py # Magister judge + parse_determinatio()

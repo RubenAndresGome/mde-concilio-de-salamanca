@@ -1,9 +1,9 @@
 # Configuración del Concilio de Salamanca (MDE)
 concilio:
   # Proveedor LLM: openai, deepseek, anthropic, groq, ollama, opencode, openrouter
-  provider: "openai"
+  provider: "deepseek"
   # Modelo LLM principal
-  model: "gpt-4o"
+  model: "deepseek-v4-flash"
   # URL base opcional (para proxies, self-hosted o DeepSeek)
   base_url: ""
   # Temperatura para razonamiento silogistico (0 = determinista)
@@ -27,6 +27,28 @@ debate:
   #         tecnicos, clean_code, logici, delineatio, red_team, proceso, todos
   agents: ["promotor", "defensor", "doctor", "larouche", "leon_xiii"]
 
+compute:
+  interactive_policy: "ask"
+  non_interactive_policy: "auto"
+  default_priority: "cost"
+  cost_model: "deepseek-v4-flash"
+  quality_model: "deepseek-v4-pro"
+  cost_thinking: "disabled"
+  quality_thinking: "enabled"
+  fallback_ollama: ["deepseek-v4", "deepseek-r1", "deepseek-coder", "qwen3-coder", "qwen2.5-coder"]
+
+audit_levels:
+  0: {name: "estatico", agents: 0, rounds: 0, calls: 0, agent_tokens: 0, magister_tokens: 0}
+  1: {name: "economico", agents: 2, rounds: 1, calls: 2, agent_tokens: 384, magister_tokens: 0}
+  2: {name: "normal", agents: 3, rounds: 2, calls: 6, agent_tokens: 512, magister_tokens: 768}
+  3: {name: "pleno", agents: 5, rounds: 2, calls: 11, agent_tokens: 768, magister_tokens: 1200}
+
+frontier:
+  require_approval: true
+  catalogue_updated_at: "2026-08-02"
+  stale_after_days: 30
+  candidates: ["gpt-5.6-terra", "gpt-5.6-sol"]
+
 output:
   # Directorio para guardar veredictos
   save_dir: "./veredictos"
@@ -39,9 +61,9 @@ output:
 # Los pesos son relativos; puedes usar 0 para deshabilitar un modelo.
 # Usa "auto" en roles para que ModelRanker decida calidad-precio-disponibilidad.
 model_weights:
-  ollama: 10
+  ollama: 1
   meta-llama: 2
-  deepseek: 1
+  deepseek: 10
   qwen: 1
   minimax: 1
   bytedance-seed: 1
@@ -59,6 +81,7 @@ roles:
 budget:
   max_per_debate_usd: 0.50
   warn_at_usd: 0.10
+  default_token_budget: 0
 
 licencia:
   developer_name: ""

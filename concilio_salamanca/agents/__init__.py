@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import sys
 import types
-from typing import Dict, Optional
 
 from concilio_salamanca.agents.base import AgenteBase, AgentFromPrompt
 from concilio_salamanca.agents.magister_determinans import MagisterDeterminans

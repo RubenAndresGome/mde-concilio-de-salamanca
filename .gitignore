@@ -46,8 +46,11 @@ veredictos/
 !.env.example
 *.local
 
-# Project-specific local state
-.opencode/
+# Project-specific local state (.opencode/ except skills)
+.opencode/*
+!.opencode/skills/
+!.opencode/skills/concilio-salamanca/
+!.opencode/skills/concilio-salamanca/SKILL.md
 
 # IDE / OS files
 .vscode/

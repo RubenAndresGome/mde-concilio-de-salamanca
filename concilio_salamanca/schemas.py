@@ -46,6 +46,10 @@ class AgentVeredict(BaseModel):
     fundamento: str = Field(
         default="", description="Fundamentación adicional del veredicto"
     )
+    preguntas_casuisticas: List[str] = Field(
+        default_factory=list,
+        description="Dos o tres casos limite no redundantes que faltan por determinar",
+    )
 
 
 class AgentOutput(BaseModel):
@@ -54,6 +58,12 @@ class AgentOutput(BaseModel):
         default=None, description="Respuesta parseada estructurada"
     )
     timestamp: float = Field(default=0, description="Timestamp del razonamiento")
+    compact: str = Field(default="", description="Ledger interno en cave-protocol")
+    usage: Dict[str, int] = Field(default_factory=dict, description="Uso reportado por el proveedor")
+    model: str = Field(default="", description="Modelo que produjo la salida")
+    latency_ms: float = Field(default=0, description="Latencia de la llamada")
+    parse_error: bool = Field(default=False, description="Indica salida no estructurable")
+    cached: bool = Field(default=False, description="Resultado recuperado de caché local")
 
 
 class Contradiccion(BaseModel):
@@ -96,11 +106,18 @@ class DebateState(TypedDict, total=False):
     pnc_validation: Optional[PnCValidation]
     determinatio: Optional[Determinatio]
     error: Optional[str]
-    voting_summary: Optional[Dict[str, int]]
+    voting_summary: Optional[Dict]
     pending_questions: List[str]
     socratic_checks: Optional[List[str]]
     murphy_checks: Optional[List[str]]
     ockham_analysis: Optional[Dict]
+    token_metrics: Optional[Dict[str, int]]
+    usage: Optional[Dict]
+    budget: Optional[Dict]
+    cache_hit_ratio: Optional[float]
+    calls_by_model: Optional[Dict[str, int]]
+    stop_reason: Optional[str]
+    escalation: Optional[Dict]
 
 
 class AgentVote(BaseModel):

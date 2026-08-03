@@ -346,15 +346,7 @@ class LicenseGenerator:
 
                 # STD header badge
         std_tag = " [VERSION STD]" if self.std_version else ""
-        jubilee_note = ""
         next_jubilee_year = datetime.now().year + 7
-        if self.jubilee_year:
-            next_jubilee_year = self.jubilee_year + 7
-            jubilee_note = f"\n\n### Proximo Jubileo: {next_jubilee_year} (desde v{self.jubilee_year})"
-
-        bula_price = t["poor_dev_usd"] * 12
-        bula_price_high = t["ingresos_brutos_alto"] * 0.10
-
         return f"""# RERUM NOVARUM STATUTO (RNS) v5.0{std_tag}
 ## *Open To Open Source, Closed to Oligarchs*
 ## *El trabajador merece su salario*

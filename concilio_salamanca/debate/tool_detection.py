@@ -7,11 +7,9 @@ Detección e instalación de herramientas externas:
 
 from __future__ import annotations
 
-import os
 import shutil
 import subprocess
-import sys
-from typing import Dict, Optional
+from typing import Dict
 
 
 def detect_cli(name: str) -> bool:

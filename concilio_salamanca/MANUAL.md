@@ -136,7 +136,7 @@ concilio --file app.py --agents promotor,seguridad,ockham,arquimedes
 ### Modo rápido (CI/CD)
 
 ```bash
-concilio --file app.js --fast  # 2 agentes, 1 ronda, paralelo (~30s)
+concilio --file app.js --fast  # alias de nivel 1: 2 agentes, 1 ronda, máximo 2 llamadas
 ```
 
 ### Diagrama de agentes por capa
@@ -170,7 +170,7 @@ concilio --file app.js --fast  # 2 agentes, 1 ronda, paralelo (~30s)
 | Proveedor | Modelo default | Costo $/MTok | Comando |
 |---|---|---|---|
 | **Ollama** (local) | `deepseek-r1:8b` | **Gratis** | `--provider ollama` |
-| **DeepSeek** | `deepseek-chat` | $0.09 | `--provider deepseek` |
+| **DeepSeek** | `deepseek-v4-flash` | $0.14 entrada miss / $0.28 salida | `--provider deepseek` |
 | **OpenRouter** | `deepseek/deepseek-v4-flash` | $0.09 | `--provider openrouter` |
 | **OpenAI** | `gpt-4o` | $2.50 | `--provider openai` |
 | **Anthropic** | `claude-sonnet-4` | $3.00 | `--provider anthropic` |
@@ -181,7 +181,7 @@ concilio --file app.js --fast  # 2 agentes, 1 ronda, paralelo (~30s)
 ```bash
 concilio --file app.js \
   --provider-obreros deepseek \
-  --model-obreros deepseek-chat \
+  --model-obreros deepseek-v4-flash \
   --provider-magister openai \
   --model-magister gpt-4o
 ```

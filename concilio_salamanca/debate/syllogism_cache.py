@@ -29,8 +29,8 @@ from typing import Dict, List, Optional, Tuple
 class PropositionType(Enum):
     A = "A"
     E = "E"
-    I = "I"
-    O = "O"
+    I = "I"  # noqa: E741 - notación categórica aristotélica
+    O = "O"  # noqa: E741 - notación categórica aristotélica
 
 
 class SetRelation(Enum):

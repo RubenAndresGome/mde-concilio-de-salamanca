@@ -8,7 +8,7 @@ from concilio_salamanca.reference.determinatio_template import format_determinat
 def format_output_json(result: dict) -> str:
     determinatio = result.get("determinatio")
     pnc = result.get("pnc_validation")
-    voting = result.get("voting", {})
+    voting = result.get("voting") or result.get("state", {}).get("voting_summary", {})
 
     output = {
         "timestamp": datetime.now().isoformat(),
@@ -17,6 +17,12 @@ def format_output_json(result: dict) -> str:
         else "ERROR",
         "determinatio": determinatio.model_dump() if determinatio else None,
         "voting": voting,
+        "usage": result.get("usage", {}),
+        "budget": result.get("budget", {}),
+        "cache_hit_ratio": result.get("cache_hit_ratio", 0.0),
+        "calls_by_model": result.get("calls_by_model", {}),
+        "stop_reason": result.get("stop_reason", ""),
+        "escalation": result.get("escalation"),
     }
 
     if pnc:
@@ -182,6 +188,18 @@ def format_output_text(result: dict) -> str:
                 f"  Contradiccion: {c.agente_a} vs {c.agente_b}: {c.descripcion}"
             )
 
+    usage = result.get("usage", {})
+    lines.extend([
+        "",
+        "ECONOMIA COGNITIVA:",
+        f"  Entrada/salida: {usage.get('input_tokens', 0)}/{usage.get('output_tokens', 0)} tokens",
+        f"  Cache hit: {float(result.get('cache_hit_ratio', 0)):.1%}",
+        f"  Llamadas: {result.get('calls_by_model', {})}",
+        f"  Parada: {result.get('stop_reason', '')}",
+    ])
+    if result.get("escalation"):
+        lines.append(f"  Escalamiento: {result['escalation']}")
+
     lines.append("")
     lines.append("=" * 70)
     lines.append("  *Sic determinat Magister. Causa finita est.*")
@@ -224,6 +242,16 @@ def format_output_markdown(result: dict) -> str:
         md.append(f"Se detectaron {len(pnc.contradicciones)} contradiccion(es):")
         for c in pnc.contradicciones:
             md.append(f"- **{c.agente_a}** vs **{c.agente_b}**: {c.descripcion}")
+
+    usage = result.get("usage", {})
+    md.extend([
+        "",
+        "## Economía cognitiva",
+        f"- Tokens entrada/salida: {usage.get('input_tokens', 0)}/{usage.get('output_tokens', 0)}",
+        f"- Caché acertada: {float(result.get('cache_hit_ratio', 0)):.1%}",
+        f"- Llamadas por modelo: `{result.get('calls_by_model', {})}`",
+        f"- Motivo de parada: `{result.get('stop_reason', '')}`",
+    ])
 
     md.append("")
     md.append("---")

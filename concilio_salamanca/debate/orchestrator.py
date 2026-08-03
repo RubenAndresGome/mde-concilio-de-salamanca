@@ -1,54 +1,48 @@
+"""Orquestador económico del colegio electoral del Concilio."""
+
 from __future__ import annotations
 
+import asyncio
+import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from langchain_core.language_models import BaseChatModel
 
-from concilio_salamanca.agents import (
-    get_agent_cls,
-    get_agent_label,
-    resolve_agents,
-)
+from concilio_salamanca.agents import get_agent_cls, get_agent_label, resolve_agents
 from concilio_salamanca.agents.magister_determinans import MagisterDeterminans
-from concilio_salamanca.debate.validator_pnc import ValidadorPNC
-from concilio_salamanca.debate.checks import run_murphy_check, run_socratic_check
-from concilio_salamanca.debate.ockham_engine import OckhamEngine
+from concilio_salamanca.debate.audit_profiles import get_audit_profile
+from concilio_salamanca.debate.context_compression import compact_section, compress_context, estimate_tokens
+from concilio_salamanca.debate.context_sieve import sift_context
 from concilio_salamanca.debate.mde_history_writer import HistoryWriter
-from concilio_salamanca.schemas import (
-    AgentOutput,
-    DebateState,
-)
+from concilio_salamanca.debate.ockham_engine import OckhamEngine
+from concilio_salamanca.debate.syllogism_boolean import validate_boolean_pnc
+from concilio_salamanca.debate.token_accountant import TokenAccountant
+from concilio_salamanca.debate.validator_pnc import ValidadorPNC
+from concilio_salamanca.schemas import AgentOutput, DebateState, Determinatio, PnCValidation, Veredicto
 
 
 @dataclass
 class DebateConfig:
     max_rounds: int = 2
     include_pnc_validation: bool = True
-    agents: List[str] = field(
-        default_factory=lambda: [
-            "promotor",
-            "defensor",
-            "doctor",
-            "larouche",
-            "leon_xiii",
-        ]
-    )
+    agents: List[str] = field(default_factory=lambda: ["promotor", "defensor", "doctor", "larouche", "leon_xiii"])
     parallel: bool = False
     mode: str = "auto"
     refine_design: bool = False
     enable_ockham: bool = True
-    save_history: bool = False       # --save-history
-    auto_save_history: bool = False  # --auto-save-history
+    save_history: bool = False
+    auto_save_history: bool = False
+    context_budget_chars: int = 2400
+    audit_level: Optional[int] = None
+    token_budget: int = 0
+    model_name: str = ""
+    escalation_candidates: List[str] = field(default_factory=lambda: ["gpt-5.6-terra", "gpt-5.6-sol"])
+    reserve_reason: str = ""
 
 
-def _build_initial_state(
-    code: str,
-    language: str,
-    max_rounds: int,
-    static_analysis_text: str,
-) -> DebateState:
+def _build_initial_state(code: str, language: str, max_rounds: int, static_analysis_text: str) -> DebateState:
     return {
         "code": code,
         "language": language,
@@ -60,75 +54,8 @@ def _build_initial_state(
         "pending_questions": [],
         "socratic_checks": [],
         "murphy_checks": [],
+        "token_metrics": {"context_tokens_before_est": 0, "context_tokens_after_est": 0, "context_tokens_saved_est": 0},
     }
-
-
-def _build_enhanced_code(
-    code: str,
-    static_analysis_text: str,
-    precedent_context: str,
-    git_context: str,
-    ockham_context: str = "",
-) -> str:
-    parts = [code]
-    if static_analysis_text:
-        parts.append(f"--- ANALISIS ESTATICO PREVIO ---\n{static_analysis_text}")
-    if precedent_context:
-        parts.append(precedent_context)
-    if git_context:
-        parts.append(f"--- CONTEXTO DEL PROYECTO ---\n{git_context}")
-    if ockham_context:
-        parts.append(f"--- ANALISIS OCKHAM (Logica de Conjuntos) ---\n{ockham_context}")
-    return "\n\n".join(parts)
-
-
-def _run_parallel_dispatcher(
-    orchestrator: "DebateOrchestrator",
-    code: str,
-    language: str,
-    static_analysis_text: str,
-    precedent_context: str,
-    git_context: str,
-) -> Dict[str, Any]:
-    import asyncio
-    import threading
-    from concurrent.futures import Future
-
-    try:
-        loop = asyncio.get_running_loop()
-        if loop.is_running():
-
-            def run_in_new_loop(coro, future):
-                new_loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(new_loop)
-                try:
-                    res = new_loop.run_until_complete(coro)
-                    future.set_result(res)
-                except Exception as e:
-                    future.set_exception(e)
-                finally:
-                    new_loop.close()
-
-            f = Future()
-            t = threading.Thread(
-                target=run_in_new_loop,
-                args=(
-                    orchestrator.run_debate_async(
-                        code, language, static_analysis_text, precedent_context, git_context
-                    ),
-                    f,
-                ),
-            )
-            t.start()
-            t.join()
-            return f.result()
-    except RuntimeError:
-        pass
-    return asyncio.run(
-        orchestrator.run_debate_async(
-            code, language, static_analysis_text, precedent_context, git_context
-        )
-    )
 
 
 def _build_result(state: DebateState) -> Dict[str, Any]:
@@ -136,154 +63,211 @@ def _build_result(state: DebateState) -> Dict[str, Any]:
         "state": state,
         "determinatio": state.get("determinatio"),
         "pnc_validation": state.get("pnc_validation"),
+        "voting": state.get("voting_summary", {}),
+        "usage": state.get("usage", {}),
+        "budget": state.get("budget", {}),
+        "cache_hit_ratio": state.get("cache_hit_ratio", 0.0),
+        "calls_by_model": state.get("calls_by_model", {}),
+        "stop_reason": state.get("stop_reason", ""),
+        "escalation": state.get("escalation"),
     }
 
 
 class DebateOrchestrator:
     def __init__(
         self,
-        model: BaseChatModel,
+        model: Optional[BaseChatModel],
         config: Optional[DebateConfig] = None,
         magister_model: Optional[BaseChatModel] = None,
     ):
         self.model = model
         self.config = config or DebateConfig()
-
-        m_model = magister_model if magister_model is not None else model
-        self.magister = MagisterDeterminans(m_model)
-        self.validator = (
-            ValidadorPNC(m_model) if self.config.include_pnc_validation else None
-        )
-
+        self.profile = get_audit_profile(self.config.audit_level) if self.config.audit_level is not None else None
+        if self.profile:
+            self.config.max_rounds = self.profile.max_rounds
+            self.config.agents = resolve_agents(self.config.agents)[: self.profile.max_agents]
         self._selected_keys = resolve_agents(self.config.agents)
         self._agent_instances: Dict[str, Any] = {}
-
-        for key in self._selected_keys:
-            cls = get_agent_cls(key)
-            if cls:
-                self._agent_instances[key] = cls(model)
-
-        # OckhamEngine: logica escolastica de conjuntos vía CBMM
+        if model is not None:
+            for key in self._selected_keys:
+                cls = get_agent_cls(key)
+                if cls:
+                    self._agent_instances[key] = cls(model)
+        final_model = magister_model if magister_model is not None else model
+        self.magister = MagisterDeterminans(final_model) if final_model is not None else None
+        # El validador semántico heredado sólo se conserva fuera de los perfiles económicos.
+        self.validator = (
+            ValidadorPNC(final_model)
+            if final_model is not None and self.config.include_pnc_validation and self.profile is None
+            else None
+        )
         self._ockham_engine = OckhamEngine() if self.config.enable_ockham else None
+        self.accountant = TokenAccountant(self.config.token_budget)
 
     @property
     def agent_keys(self) -> List[str]:
         return self._selected_keys
 
-    def _build_context(self, round_num: int, previous_arguments: Dict[str, str], label: str) -> Optional[Dict[str, str]]:
-        if round_num > 1 and previous_arguments:
-            return {k: v for k, v in previous_arguments.items() if k != label}
-        return None
+    def _agent_token_limit(self) -> int:
+        return self.profile.agent_max_tokens if self.profile else 0
 
-    def _run_socratic_on_round(self, state: DebateState, round_outputs: Dict[str, AgentOutput]):
-        round_raw = {
-            get_agent_label(key): output.raw
-            for key, output in round_outputs.items()
-        }
-        questions = run_socratic_check(round_raw, previous_checks=state.get("socratic_checks"))
-        if questions:
-            state.setdefault("socratic_checks", []).extend(questions)
-            state.setdefault("pending_questions", []).extend(questions)
+    def _question_limit(self) -> int:
+        return self.profile.question_limit if self.profile else 3
 
-    def _run_murphy_check(self, state: DebateState):
-        config_snapshot = {
-            "max_rounds": self.config.max_rounds,
-            "num_agents": len(self._selected_keys),
-            "pnc_enabled": self.config.include_pnc_validation,
-        }
-        warnings = run_murphy_check(config_snapshot, previous_checks=state.get("murphy_checks"))
-        if warnings:
-            state["murphy_checks"] = warnings
-            state.setdefault("pending_questions", []).extend(
-                [f"[Murphy] {w}" for w in warnings]
+    def _build_context(self, round_num: int, previous: Dict[str, str], label: str) -> Optional[Dict[str, str]]:
+        if round_num <= 1 or not previous:
+            return None
+        return compress_context(previous, exclude=label, budget_chars=self.config.context_budget_chars)
+
+    def _record_context_savings(self, state: DebateState, previous: Dict[str, str], context: Optional[Dict[str, str]], label: str) -> None:
+        if not context:
+            return
+        before = estimate_tokens("\n".join(raw for agent, raw in previous.items() if agent != label))
+        after = estimate_tokens("\n".join(context.values()))
+        metrics = state.setdefault("token_metrics", {})
+        metrics["context_tokens_before_est"] = metrics.get("context_tokens_before_est", 0) + before
+        metrics["context_tokens_after_est"] = metrics.get("context_tokens_after_est", 0) + after
+        metrics["context_tokens_saved_est"] = metrics.get("context_tokens_saved_est", 0) + max(0, before - after)
+
+    def _collect_questions(self, state: DebateState, outputs: Dict[str, AgentOutput]) -> None:
+        existing = state.setdefault("pending_questions", [])
+        categories = {question.split(":", 1)[0].strip().lower() for question in existing}
+        for output in outputs.values():
+            if not output.structured:
+                continue
+            for question in output.structured.preguntas_casuisticas:
+                category = question.split(":", 1)[0].strip().lower()
+                if category in categories:
+                    continue
+                existing.append(question)
+                categories.add(category)
+                if len(existing) >= self._question_limit():
+                    return
+
+    @staticmethod
+    def _deterministic_determination(state: DebateState, pnc: Optional[PnCValidation] = None) -> Determinatio:
+        voting = state.get("voting_summary", {})
+        verdict_value = voting.get("mayoria", "RESERVA")
+        try:
+            verdict = Veredicto(verdict_value)
+        except ValueError:
+            verdict = Veredicto.RESERVA
+        agents = voting.get("agentes", [])
+        for_votes = [v["agente"] for v in agents if v.get("veredicto") == verdict.value]
+        against = [v["agente"] for v in agents if v.get("veredicto") != verdict.value]
+        return Determinatio(
+            quaestio="¿El código satisface el Dogma y la evidencia disponible?",
+            videtur="Votos favorables: " + (", ".join(for_votes) or "ninguno"),
+            sed_contra="Votos discrepantes: " + (", ".join(against) or "ninguno"),
+            respondeo=(
+                f"Síntesis electoral determinista: {verdict.value}; cuota "
+                f"{float(voting.get('cuota_mayoria', 0)):.0%}."
+            ),
+            determinatio_codici="Revisar las evidencias del ledger compacto; no se generó código por LLM.",
+            veredicto_final=verdict,
+            pnc_validation=pnc,
+        )
+
+    @staticmethod
+    def _static_determination(code: str, static_analysis: str, reserve_reason: str = "") -> Determinatio:
+        text = f"{code}\n{static_analysis}".lower()
+        critical = [term for term in ("eval(", "exec(", "pickle.loads", "shell=true", "password =", "secret =") if term in text]
+        verdict = Veredicto.RESERVA if reserve_reason else (Veredicto.CONDENA if critical else Veredicto.ABSUELVE)
+        evidence = ", ".join(critical) if critical else "sin patrón crítico determinista"
+        return Determinatio(
+            quaestio="Auditoría estática sin LLM",
+            videtur=compact_section(static_analysis or "Sin diagnóstico externo.", 800),
+            sed_contra=evidence,
+            respondeo=(reserve_reason or f"Resultado reproducible de reglas locales: {verdict.value}."),
+            determinatio_codici="No se modificó el código.",
+            veredicto_final=verdict,
+        )
+
+    @staticmethod
+    def _critical_static_findings(code: str, static_analysis: str = "") -> list[str]:
+        text = f"{code}\n{static_analysis}".lower()
+        return [
+            term for term in ("eval(", "exec(", "pickle.loads", "shell=true", "password =", "secret =")
+            if term in text
+        ]
+
+    def _apply_static_veto(self, state: DebateState) -> None:
+        findings = self._critical_static_findings(state.get("code", ""), state.get("static_analysis", ""))
+        state["critical_static_findings"] = findings
+        determination = state.get("determinatio")
+        if findings and determination and determination.veredicto_final != Veredicto.CONDENA:
+            determination.veredicto_final = Veredicto.CONDENA
+            determination.respondeo += (
+                " Veto estático: un hallazgo crítico determinista no puede ser absuelto por consenso LLM."
             )
+            determination.determinatio_codici = "Corregir evidencia crítica: " + ", ".join(findings)
 
-    def _maybe_save_history(self, state: DebateState, code: str, language: str):
-        """Pregunta al usuario si desea guardar la sesion en .mde_history/"""
+    def _escalation(self, state: DebateState, pnc: Optional[PnCValidation]) -> Optional[dict]:
+        voting = state.get("voting_summary", {})
+        reasons = []
+        if pnc and pnc.hay_contradicciones:
+            reasons.append("contradiccion_pnc")
+        if voting and float(voting.get("cuota_mayoria", 0)) < 0.67:
+            reasons.append("mayoria_inferior_67")
+        parse_errors = [name for name, output in state.get("agent_outputs", {}).items() if output.parse_error]
+        if len(parse_errors) >= 2:
+            reasons.append("parseo_fallido_repetido")
+        reserves = [v.get("agente") for v in voting.get("agentes", []) if v.get("veredicto") == "RESERVA"]
+        if reserves:
+            reasons.append("reserva_especialista")
+        if not reasons:
+            return None
+        specialists = list(dict.fromkeys((parse_errors + reserves)))[:2]
+        seed = "|".join(reasons + specialists + [str(state.get("round_num", 0))])
+        from concilio_salamanca.debate.model_pricing import ModelRanker
+
+        specialist_calls = max(1, len(specialists))
+        input_estimate = estimate_tokens(state.get("code", "")) * (specialist_calls + 1)
+        output_estimate = (self.profile.agent_max_tokens * specialist_calls + self.profile.magister_max_tokens) if self.profile else 1792
+        estimates = {}
+        pricing_status = "current"
+        for candidate in self.config.escalation_candidates:
+            try:
+                estimates[candidate] = round(ModelRanker.estimate_cost(
+                    f"openai/{candidate}", input_estimate, output_estimate
+                ), 6)
+            except RuntimeError:
+                estimates[candidate] = None
+                pricing_status = "stale_blocked"
+        return {
+            "requires_user_decision": True,
+            "decision_id": hashlib.sha256(seed.encode()).hexdigest()[:16],
+            "reasons": reasons,
+            "agents_to_repeat": specialists,
+            "candidates": list(self.config.escalation_candidates),
+            "max_tokens": (self.profile.magister_max_tokens if self.profile else 768),
+            "estimated_cost_usd": estimates,
+            "pricing_status": pricing_status,
+        }
+
+    def _sync_accounting(self, state: DebateState) -> None:
+        snapshot = self.accountant.snapshot()
+        state.update({key: snapshot[key] for key in ("usage", "budget", "cache_hit_ratio", "calls_by_model")})
+        state["usage"]["cost_usd"] = snapshot["cost_usd"]
+        state["usage"]["calls"] = snapshot["calls"]
+
+    def _maybe_save_history(self, state: DebateState, code: str, language: str) -> None:
         if not self.config.save_history and not self.config.auto_save_history:
             return
         try:
-            writer = HistoryWriter()
-            determinatio = state.get("determinatio")
-            veredicto = determinatio.veredicto_final.value if determinatio else "?"
-            session = {
+            verdict = state["determinatio"].veredicto_final.value
+            HistoryWriter().save_session({
                 "id": f"ses-{datetime.now().strftime('%Y%m%d%H%M%S')}",
                 "timestamp": datetime.now().isoformat(),
-                "title": f"Auditoria {language} — {veredicto}",
+                "title": f"Auditoria {language} — {verdict}",
                 "action": "audit",
-                "summary": f"Auditoria MDE de {len(code)} bytes de codigo {language}. "
-                           f"Veredicto: {veredicto}. "
-                           f"Agentes: {len(self._selected_keys)}. "
-                           f"Rondas: {self.config.max_rounds}.",
-                "plan": f"Auditar {len(code)} bytes de codigo {language} con "
-                        f"{len(self._selected_keys)} agentes en {self.config.max_rounds} rondas.",
-                "do": f"Ejecutado debate con agentes: {', '.join(self._selected_keys[:5])}. "
-                      f"PNC: {'si' if self.validator else 'no'}. "
-                      f"Ockham: {'si' if self._ockham_engine else 'no'}.",
-                "check": f"Veredicto: {veredicto}. Tests pasando.",
-                "act": "Documentacion generada en .mde_history/",
-                "files_affected": [],
-                "agents": len(self._selected_keys),
-                "status": "completed",
-                "outcome": "success",
-            }
-            interactive = not self.config.auto_save_history
-            writer.save_session(session, generate_pdca=True, interactive=interactive)
+                "summary": f"{len(code)} bytes; {len(self._selected_keys)} agentes; {state.get('round_num', 0)} rondas.",
+                "plan": "Auditoría con economía cognitiva.", "do": "Colegio electoral contextual.",
+                "check": f"Veredicto: {verdict}.", "act": "Ledger registrado.",
+                "files_affected": [], "agents": len(self._selected_keys), "status": "completed", "outcome": "success",
+            }, generate_pdca=True, interactive=not self.config.auto_save_history)
         except Exception:
             pass
-
-    def _enforce_dialectica(self, state: DebateState, round_num: int, previous_arguments: Dict[str, str]):
-        """Abogado del Diablo: si no hay contraparte, invoca a Socrates.
-
-        En cada ronda, verifica si hay argumentos contradictorios.
-        Si un agente emitio un veredicto y ningun otro lo refuto,
-        Socrates es invocado automaticamente para forzar la contradiccion.
-        """
-        if "socrates" not in self._selected_keys:
-            return
-        socrates_agent = self._agent_instances.get("socrates")
-        if not socrates_agent:
-            return
-        if round_num < 2 or not previous_arguments:
-            return
-
-        # Buscar argumentos opuestos (CONDENA vs ABSUELVE vs RESERVA)
-        has_condena = any("CONDENA" in v or "condeno" in v.lower() for v in previous_arguments.values())
-        has_absuelve = any("ABSUELVE" in v or "absuelvo" in v.lower() for v in previous_arguments.values())
-        has_reserva = any("RESERVA" in v or "reservo" in v.lower() for v in previous_arguments.values())
-
-        # Si hay condena sin absolucion, o absolucion sin condena,
-        # Socrates force la contraparte dialectica
-        needs_counter = (has_condena and not has_absuelve) or (has_absuelve and not has_condena)
-
-        if needs_counter:
-            context = {
-                "instruccion": "Actua como Abogado del Diablo. Los agentes han emitido veredictos sin contraparte. "
-                               "Tu deber es encontrar la contradiccion. Lleva los argumentos al extremo. "
-                               "Usa el metodo mayeutico: solo preguntas, no afirmaciones.",
-                "argumentos_previos": previous_arguments,
-            }
-            output = socrates_agent.act(
-                "Actua como Advocatus Diaboli: encuentra la contradiccion en estos veredictos.",
-                context,
-            )
-            state["agent_outputs"]["Socrates (Advocatus Diaboli)"] = output
-
-    def _finalize_determinatio(self, state: DebateState, round_outputs: Dict[str, AgentOutput]) -> None:
-        pnc = None
-        if self.validator:
-            agent_outputs_for_pnc = {
-                get_agent_label(key): output for key, output in round_outputs.items()
-            }
-            pnc = self.validator.validate(agent_outputs_for_pnc)
-            state["pnc_validation"] = pnc
-
-        self._run_murphy_check(state)
-
-        determinatio_raw = self.magister.judge(state, pnc)
-        determinatio = self.magister.parse_determinatio(determinatio_raw)
-        determinatio.pnc_validation = pnc
-        state["determinatio"] = determinatio
 
     def run_debate(
         self,
@@ -293,143 +277,185 @@ class DebateOrchestrator:
         precedent_context: str = "",
         git_context: str = "",
     ) -> Dict[str, Any]:
-        if self.config.parallel:
-            return _run_parallel_dispatcher(
-                self, code, language, static_analysis_text, precedent_context, git_context
-            )
+        from concilio_salamanca.debate.voting import build_voting_table
 
-        state = _build_initial_state(code, language, self.config.max_rounds, static_analysis_text)
+        max_rounds = self.config.max_rounds
+        state = _build_initial_state(code, language, max_rounds, static_analysis_text)
+        if self.profile and self.profile.level == 0:
+            state["determinatio"] = self._static_determination(code, static_analysis_text, self.config.reserve_reason)
+            state["voting_summary"] = {}
+            state["stop_reason"] = "provider_unavailable_static_reserve" if self.config.reserve_reason else "static_complete"
+            self._apply_static_veto(state)
+            self._sync_accounting(state)
+            return _build_result(state)
 
-        # Ockham context: logica escolastica de conjuntos via CBMM
-        ockham_context = ""
-        if self._ockham_engine and self._ockham_engine.available:
-            try:
-                analysis = self._ockham_engine.analyze()
-                ockham_context = self._ockham_engine.format_for_prompt(analysis)
-                state["ockham_analysis"] = analysis
-            except Exception:
-                pass
+        sifted = sift_context(code, static_analysis_text)
+        parts = [sifted.code]
+        if sifted.diagnostics:
+            parts.append("DIAGNOSTICOS:\n" + sifted.diagnostics)
+        if precedent_context:
+            parts.append(compact_section(precedent_context, 1800))
+        if git_context:
+            parts.append(compact_section(git_context, 1800))
+        enhanced_code = "\n\n".join(parts)
+        estimated_agent_input = estimate_tokens(enhanced_code) + 350
+        state["token_metrics"]["context_sieve_chars_saved"] = sifted.omitted_chars
+        previous: Dict[str, str] = {}
+        all_latest: Dict[str, AgentOutput] = {}
+        stop_reason = "max_rounds"
 
-        enhanced_code = _build_enhanced_code(code, static_analysis_text, precedent_context, git_context, ockham_context)
-        previous_arguments: Dict[str, str] = {}
-
-        for round_num in range(1, self.config.max_rounds + 1):
+        for round_num in range(1, max_rounds + 1):
             state["round_num"] = round_num
+            keys = self._selected_keys
+            if self.profile and self.profile.level == 2 and round_num == 2:
+                keys = keys[:2]
             round_outputs: Dict[str, AgentOutput] = {}
-
-            for key in self._selected_keys:
+            snapshot = dict(previous)
+            for key in keys:
+                if self.profile and len(self.accountant.calls) >= self.profile.max_calls - int(self.profile.use_magister):
+                    stop_reason = "call_budget_exhausted"
+                    break
+                limit = self._agent_token_limit()
+                if not self.accountant.can_call(limit, estimated_agent_input):
+                    stop_reason = "token_budget_exhausted"
+                    break
                 agent = self._agent_instances.get(key)
-                if not agent:
+                if agent is None:
                     continue
                 label = get_agent_label(key)
-                context = self._build_context(round_num, previous_arguments, label)
-                output = agent.act(enhanced_code, context)
+                context = self._build_context(round_num, snapshot, label)
+                self._record_context_savings(state, snapshot, context, label)
+                output = agent.act(enhanced_code, context, max_tokens=limit)
                 round_outputs[key] = output
-                previous_arguments[label] = output.raw
+                all_latest[label] = output
+                previous[label] = output.compact or output.raw
                 state["agent_outputs"][label] = output
-
-            state["arguments_history"].append(
-                {
-                    "round": round_num,
-                    "arguments": {
-                        get_agent_label(key): output.raw
-                        for key, output in round_outputs.items()
-                    },
-                }
+                if not output.cached:
+                    self.accountant.record(
+                        usage=output.usage, model=output.model or self.config.model_name,
+                        agent=label, latency_ms=output.latency_ms,
+                    )
+            state["arguments_history"].append({
+                "round": round_num,
+                "arguments": {get_agent_label(key): output.compact or output.raw for key, output in round_outputs.items()},
+            })
+            self._collect_questions(state, round_outputs)
+            state["voting_summary"] = build_voting_table(
+                {"state": state}, consensus_threshold=(self.profile.consensus_threshold if self.profile else 0.67)
             )
-            self._run_socratic_on_round(state, round_outputs)
-            self._enforce_dialectica(state, round_num, previous_arguments)
+            pnc = validate_boolean_pnc(all_latest) if self.config.include_pnc_validation else None
+            state["pnc_validation"] = pnc
+            if stop_reason in {"call_budget_exhausted", "token_budget_exhausted"}:
+                break
+            if self.profile and state["voting_summary"].get("consenso") and not (pnc and pnc.hay_contradicciones):
+                stop_reason = "consensus_reached"
+                break
 
-        self._finalize_determinatio(state, round_outputs)
+        pnc = state.get("pnc_validation")
+        if self.validator:
+            pnc = self.validator.validate(all_latest)
+            state["pnc_validation"] = pnc
+
+        if self.profile and not self.profile.use_magister:
+            state["determinatio"] = self._deterministic_determination(state, pnc)
+        elif self.magister is not None:
+            limit = self.profile.magister_max_tokens if self.profile else 0
+            magister_input_estimate = estimate_tokens("\n".join(previous.values())) + 300
+            if self.accountant.can_call(limit, magister_input_estimate):
+                raw = self.magister.judge(state, pnc, max_tokens=limit)
+                state["determinatio"] = self.magister.parse_determinatio(raw)
+                state["determinatio"].pnc_validation = pnc
+                self.accountant.record(
+                    usage=self.magister.last_usage, model=self.magister.last_model or self.config.model_name,
+                    agent="Magister Determinans", latency_ms=self.magister.last_latency_ms,
+                )
+            else:
+                stop_reason = "token_budget_exhausted"
+                state["determinatio"] = self._deterministic_determination(state, pnc)
+        else:
+            state["determinatio"] = self._deterministic_determination(state, pnc)
+
+        state["stop_reason"] = stop_reason
+        state["escalation"] = self._escalation(state, pnc)
+        self._apply_static_veto(state)
+        self._sync_accounting(state)
         self._maybe_save_history(state, code, language)
         return _build_result(state)
 
-    async def run_debate_async(
+    def resume_with_frontier(
         self,
-        code: str,
-        language: str = "auto",
-        static_analysis_text: str = "",
-        precedent_context: str = "",
-        git_context: str = "",
+        result: Dict[str, Any],
+        frontier_model: BaseChatModel,
+        *,
+        decision_id: str,
+        candidate: str,
     ) -> Dict[str, Any]:
-        import asyncio
+        """Reanuda sólo Magister y hasta dos especialistas tras aprobación explícita."""
+        from concilio_salamanca.debate.voting import build_voting_table
 
-        state = _build_initial_state(code, language, self.config.max_rounds, static_analysis_text)
-
-        ockham_context = ""
-        if self._ockham_engine and self._ockham_engine.available:
-            try:
-                analysis = self._ockham_engine.analyze()
-                ockham_context = self._ockham_engine.format_for_prompt(analysis)
-                state["ockham_analysis"] = analysis
-            except Exception:
-                pass
-
-        enhanced_code = _build_enhanced_code(code, static_analysis_text, precedent_context, git_context, ockham_context)
-        previous_arguments: Dict[str, str] = {}
-
-        for round_num in range(1, self.config.max_rounds + 1):
-            state["round_num"] = round_num
-
-            tasks = []
-            keys_to_run = []
-            for key in self._selected_keys:
-                agent = self._agent_instances.get(key)
-                if not agent:
-                    continue
-                label = get_agent_label(key)
-                context = self._build_context(round_num, previous_arguments, label)
-
-                if hasattr(agent, "act_async"):
-                    tasks.append(agent.act_async(enhanced_code, context))
-                else:
-                    loop = asyncio.get_running_loop()
-                    tasks.append(
-                        loop.run_in_executor(None, agent.act, enhanced_code, context)
-                    )
-                keys_to_run.append((key, label))
-
-            outputs = await asyncio.gather(*tasks)
-
-            round_outputs: Dict[str, AgentOutput] = {}
-            for (key, label), output in zip(keys_to_run, outputs):
-                round_outputs[key] = output
-                previous_arguments[label] = output.raw
-                state["agent_outputs"][label] = output
-
-            state["arguments_history"].append(
-                {
-                    "round": round_num,
-                    "arguments": {
-                        get_agent_label(key): output.raw
-                        for key, output in round_outputs.items()
-                    },
-                }
+        state = result["state"]
+        escalation = state.get("escalation") or {}
+        if decision_id != escalation.get("decision_id") or candidate not in escalation.get("candidates", []):
+            raise ValueError("La decisión frontera no coincide con el escalamiento pendiente")
+        labels = set(escalation.get("agents_to_repeat") or [])
+        keys = [key for key in self._selected_keys if get_agent_label(key) in labels][:2]
+        if not keys:
+            keys = self._selected_keys[:2]
+        compact_context = {
+            name: output.compact or output.raw
+            for name, output in state.get("agent_outputs", {}).items()
+        }
+        rerun = {}
+        limit = self.profile.agent_max_tokens if self.profile else 512
+        for key in keys:
+            if not self.accountant.can_call(limit, estimate_tokens(state.get("code", "")) + 350):
+                state["stop_reason"] = "token_budget_exhausted_before_frontier"
+                break
+            cls = get_agent_cls(key)
+            if cls is None:
+                continue
+            label = get_agent_label(key)
+            output = cls(frontier_model).act(
+                state.get("code", ""),
+                compress_context(compact_context, exclude=label, budget_chars=self.config.context_budget_chars),
+                max_tokens=limit,
             )
-            self._run_socratic_on_round(state, round_outputs)
-            self._enforce_dialectica(state, round_num, previous_arguments)
-
-        # Async finalization
-        pnc = None
-        if self.validator:
-            agent_outputs_for_pnc = {
-                get_agent_label(key): output for key, output in round_outputs.items()
-            }
-            loop = asyncio.get_running_loop()
-            pnc = await loop.run_in_executor(
-                None, self.validator.validate, agent_outputs_for_pnc
+            rerun[key] = output
+            state["agent_outputs"][label] = output
+            self.accountant.record(
+                usage=output.usage, model=candidate, agent=label, latency_ms=output.latency_ms
             )
-            state["pnc_validation"] = pnc
-
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self._run_murphy_check, state)
-
-        loop = asyncio.get_running_loop()
-        determinatio_raw = await loop.run_in_executor(
-            None, self.magister.judge, state, pnc
+        if rerun:
+            state["round_num"] = int(state.get("round_num", 0)) + 1
+            state["arguments_history"].append({
+                "round": "frontier",
+                "arguments": {get_agent_label(key): output.compact or output.raw for key, output in rerun.items()},
+            })
+        state["voting_summary"] = build_voting_table({"state": state})
+        pnc = validate_boolean_pnc(state.get("agent_outputs", {}))
+        state["pnc_validation"] = pnc
+        magister = MagisterDeterminans(frontier_model)
+        magister_limit = self.profile.magister_max_tokens if self.profile else 768
+        frontier_ledger_estimate = estimate_tokens("\n".join(compact_context.values())) + 300
+        if not self.accountant.can_call(magister_limit, frontier_ledger_estimate):
+            state["stop_reason"] = "token_budget_exhausted_before_frontier_magister"
+            self._sync_accounting(state)
+            return _build_result(state)
+        raw = magister.judge(state, pnc, max_tokens=magister_limit)
+        state["determinatio"] = magister.parse_determinatio(raw)
+        state["determinatio"].pnc_validation = pnc
+        self.accountant.record(
+            usage=magister.last_usage, model=candidate,
+            agent="Magister Determinans", latency_ms=magister.last_latency_ms,
         )
-        determinatio = self.magister.parse_determinatio(determinatio_raw)
-        determinatio.pnc_validation = pnc
-        state["determinatio"] = determinatio
-
+        state["stop_reason"] = "frontier_approved_completed"
+        state["escalation"] = {
+            **escalation, "requires_user_decision": False, "approved": True,
+            "selected_candidate": candidate, "executed_calls": len(rerun) + 1,
+        }
+        self._apply_static_veto(state)
+        self._sync_accounting(state)
         return _build_result(state)
+
+    async def run_debate_async(self, *args, **kwargs) -> Dict[str, Any]:
+        return await asyncio.to_thread(self.run_debate, *args, **kwargs)
